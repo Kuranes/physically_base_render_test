@@ -1,0 +1,19 @@
+{
+    "jslint_happy": true,
+    "brace_style": "end-expand",
+    "space_in_paren": true,
+
+    "indent_size": 4,
+    "indent_char": " ",
+    "indent_level": 0,
+    "indent_with_tabs": false,
+    "preserve_newlines": true,
+    "max_preserve_newlines": 10,
+    "keep_array_indentation": true,
+    "keep_function_indentation": true,
+    "space_before_conditional": true,
+    "break_chained_methods": true,
+    "eval_code": false,
+    "unescape_strings": false,
+    "wrap_line_length": 0
+}
