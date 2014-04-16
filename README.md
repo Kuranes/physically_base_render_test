@@ -1,7 +1,7 @@
 Physically Base Render : Equation playground
 ============================================
 
-## [the online playground](http://kuranes.github.io/physically_base_render_test/)
+## [The online playground](http://kuranes.github.io/physically_base_render_test/)
 
 ### Done:
 - tweak roughness dielectric diffuse/alberdo specular
