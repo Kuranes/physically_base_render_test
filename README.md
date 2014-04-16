@@ -19,20 +19,21 @@ more lights
 IBL & area lights
 tiled/forward/deferred
 
-Sources:
+Thanks&Sources:
 
-Thanks Alexandre for idea and implementations
+Alexandre Pestana for idea and implementations
 http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
 
-Thanks Brian for nice equation list
+Brian Karis for nice equation list
 http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
 
+Siggraph Courses
 http://blog.selfshadow.com/publications/s2013-shading-course/
 http://blog.selfshadow.com/publications/s2012-shading-course/
 http://renderwonk.com/publications/s2010-color-course/
 http://renderwonk.com/publications/s2010-shading-course/
 
-Thanks for all blogpost on PBR from ace top graphic computer bloggers :
+Blogpost on PBR/CG :
 http://www.thetenthplanet.de/archives/255
 http://blog.selfshadow.com/2011/07/22/specular-showdown/
 http://simonstechblog.blogspot.fr/2011/12/microfacet-brdf.html
