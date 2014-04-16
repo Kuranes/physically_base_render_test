@@ -53,3 +53,6 @@ Physically Base Render : Equation playground
 - http://fgiesen.wordpress.com/category/graphics-pipeline/
 - http://the-witness.net/news/2010/09/hemicube-rendering-and-integration/
 - http://www.realtimerendering.com/index.html
+- https://github.com/YuqinShao/Tile_Based_WebGL_DeferredShader
+- http://codeflow.org/entries/2012/aug/25/webgl-deferred-irradiance-volumes/
+- http://alteredqualia.com/xg/examples/deferred_tubelights.html
