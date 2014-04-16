@@ -56,3 +56,4 @@ Physically Base Render : Equation playground
 - https://github.com/YuqinShao/Tile_Based_WebGL_DeferredShader
 - http://codeflow.org/entries/2012/aug/25/webgl-deferred-irradiance-volumes/
 - http://alteredqualia.com/xg/examples/deferred_tubelights.html
+- http://diaryofagraphicsprogrammer.blogspot.fr/2013/09/call-for-new-post-processing-pipeline.html
