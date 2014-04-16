@@ -20,7 +20,7 @@ var main = function () {
   var viewer;
   var textureHigh;
   var textureEnv;
-
+    var background;
 
     // from require to global var
     OSG.globalify();
@@ -335,15 +335,15 @@ function getShaderBackground()
 // change the environment maps (reflective included)
 // Images are 8-bit RGBE encoded based on the radiance file format
 // The example supports radiance .hdr files, but uses .png which contains the exact same information for better size and speed.
-function setEnvironment(name, background) {
-    var textures = {
+function setEnvironment(name) {
+    var texturesEnvList = {
         'Alexs_Apartment': ['Alexs_Apt_2k.png', 'Alexs_Apt_Env.png'],
         'Arches_E_PineTree': ['Arches_E_PineTree_3k.png', 'Arches_E_PineTree_Env.png'],
         'GrandCanyon_C_YumaPoint': ['GCanyon_C_YumaPoint_3k.png', 'GCanyon_C_YumaPoint_Env.png'],
         'Milkyway': ['Milkyway_small.png', 'Milkyway_Light.png'],
         'Walk_Of_Fame': ['Mans_Outside_2k.png', 'Mans_Outside_Env.png']
     };
-    var urls = textures[name];
+    var urls = texturesEnvList[name];
 
     Q.all([
             readImageURL('textures/' + name + '/' + urls[0]),
@@ -363,6 +363,10 @@ function setEnvironment(name, background) {
                     textureEnv.setTextureSize(images[0].width, images[0].height);
                     textureEnv.setImage(images[0].data, osg.Texture.RGBA);
                 }
+
+                myStateSet.setTextureAttributeAndMode(4, textureHigh, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE);
+                myStateSet.setTextureAttributeAndMode(5, textureEnv, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE);
+                //updateShader();
             });
 }
 
@@ -393,6 +397,12 @@ function setEnvironment(name, background) {
     var MetallicMapUniform = osg.Uniform.createInt( 2, 'Texture2' );
     var NormalMapUniform = osg.Uniform.createInt( 3, 'Texture3' );
 
+    var getTexture = function (url){
+        var texture = osg.Texture.createFromURL( url );
+        texture.setMinFilter(osg.Texture.LINEAR_MIPMAP_LINEAR);
+        texture.setMagFilter(osg.Texture.LINEAR);
+        return texture;
+    }
     var updateTexture = function ( ) {
 
         switch ( pbrGui.DiffuseMap ) {
@@ -400,10 +410,11 @@ function setEnvironment(name, background) {
             myStateSet.removeTextureAttribute( 0, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 0, osg.Texture.createFromURL( 'textures/Albedo.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Albedo.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 0, osg.Texture.createFromURL( 'textures/Cerberus_A.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+
+            myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Cerberus_A.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         }
         switch ( pbrGui.RoughnessMap ) {
@@ -411,10 +422,10 @@ function setEnvironment(name, background) {
             myStateSet.removeTextureAttribute( 1, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 1, osg.Texture.createFromURL( 'textures/Roughness.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Roughness.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 1, osg.Texture.createFromURL( 'textures/Cerberus_R.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Cerberus_R.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         }
 
@@ -423,10 +434,10 @@ function setEnvironment(name, background) {
             myStateSet.removeTextureAttribute( 2, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 2, osg.Texture.createFromURL( 'textures/Metallic.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Metallic.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 2, osg.Texture.createFromURL( 'textures/Cerberus_M.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Cerberus_M.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         }
 
@@ -435,10 +446,10 @@ function setEnvironment(name, background) {
             myStateSet.removeTextureAttribute( 3, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 3, osg.Texture.createFromURL( 'textures/Normal.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Normal.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 3, osg.Texture.createFromURL( 'textures/Cerberus_N.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+            myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Cerberus_N.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
         }
 
@@ -446,9 +457,8 @@ function setEnvironment(name, background) {
         case 'NONE':
             myStateSet.removeTextureAttribute( 3, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             break;
-        case 'CITY':
-             myStateSet.setTextureAttributeAndMode(4, textureHigh, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE);
-             myStateSet.setTextureAttributeAndMode(5, textureEnv, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE);
+        default:
+            setEnvironment(pbrGui.EnvMap);
             break;
         }
 
@@ -484,16 +494,19 @@ function setEnvironment(name, background) {
         this.metallicSpecularDefine = 'METALLIC';
         this.normalDistributionDefine = 'GGX';
         this.fresnelDefine = 'SCHLICK';
-        this.geometricDefine = 'SMITH_SCHLICK_GGX';
+        this.geometryDefine = 'SMITH_SCHLICK_GGX';
+        this.energyRatioDefine = 'FresnelDiff';
         this.roughnessGlossinessDefine = 'ROUGHNESS';
         this.DiffuseMap = 'NONE';
-        this.NormalMap = 'NONE';
+        this.NormalMap = 'BASE';
         this.RoughnessMap = 'NONE';
         this.MetallicMap = 'NONE';
-        this.EnvMap = 'NONE';
+        this.EnvMap = 'Milkyway';
+        this.specAA = 'TOKSVIG'
         this.reload = updateShader;
       this.Precision = 'HIGH';
     };
+
     var pbrGui = new GUIPARAMS();
 
     var update = function ( ) {
@@ -725,11 +738,14 @@ function setEnvironment(name, background) {
         vertShader = loadShader( 'shaders/pbr.vert' );
       }
       var currentDefine = '';
+    currentDefine += '#define WITH_NORMALMAP_UNSIGNED 1\n';
       currentDefine += '#define ' + pbrGui.metallicSpecularDefine + ' 1\n';
       currentDefine += '#define NDF_' + pbrGui.normalDistributionDefine + ' 1\n';
       currentDefine += '#define FRESNEL_' + pbrGui.fresnelDefine + ' 1\n';
-      currentDefine += '#define GEOMETRIC_' + pbrGui.geometricDefine + ' 1 \n';
-      currentDefine += '#define USE_' + pbrGui.roughnessGlossinessDefine + ' 1 \n';
+      currentDefine += '#define GEOMETRY_' + pbrGui.geometryDefine + ' 1 \n';
+      currentDefine += '#define EnergyRatio_' + pbrGui.energyRatioDefine + ' 1 \n';
+    currentDefine += '#define USE_' + pbrGui.roughnessGlossinessDefine + ' 1 \n';
+    currentDefine += '#define USE_' + pbrGui.specAA + ' 1 \n';
 
       switch (pbrGui.Precision){
         case 'HIGH':
@@ -776,8 +792,12 @@ function setEnvironment(name, background) {
 
         return program;
     }
+// copy paste from dat.gui save mechanism
+var presets = {"preset":"Default","remembered":{"Default":{"0":{}},"Gun":{"0":{"model":"gun","Precision":"HIGH","Albedo":[255,200,200,1],"Specular":[0,200,200,1],"Roughness":0.7000000000000001,"Dielectric":0.6000000000000001,"lightColor":[255,255,255,1],"lightIntensity":1,"gamma":2.2,"metallicSpecularDefine":"METALLIC","normalDistributionDefine":"GGX","fresnelDefine":"SCHLICK","geometryDefine":"SMITH_SCHLICK_GGX","energyRatioDefine":"FresnelDiff","roughnessGlossinessDefine":"ROUGHNESS","specAA":"TOKSVIG","DiffuseMap":"CERBERUS","NormalMap":"CERBERUS","RoughnessMap":"CERBERUS","MetallicMap":"CERBERUS","EnvMap":"GrandCanyon_C_YumaPoint"}},"MarbleTest":{"0":{"model":"materialTest","Precision":"HIGH","Albedo":[220,17.254901960784323,17.254901960784323,1],"Specular":[0,200,200,1],"Roughness":0.7000000000000001,"Dielectric":0.6000000000000001,"lightColor":[232.5,225.79584775086502,118.52941176470587,1],"lightIntensity":0.4,"gamma":2.4000000000000004,"metallicSpecularDefine":"METALLIC","normalDistributionDefine":"GGX","fresnelDefine":"SCHLICK","geometryDefine":"SMITH_SCHLICK_GGX","energyRatioDefine":"FresnelDiff","roughnessGlossinessDefine":"ROUGHNESS","specAA":"TOKSVIG","DiffuseMap":"BASE","NormalMap":"BASE","RoughnessMap":"BASE","MetallicMap":"BASE","EnvMap":"Alexs_Apartment"}},"ogre":{"0":{"model":"ogre","Precision":"HIGH","Albedo":[11.176470588235297,95,0,1],"Specular":"#94a03a","Roughness":0.7000000000000001,"Dielectric":0.4,"lightColor":[232.5,225.79584775086502,118.52941176470587,1],"lightIntensity":0.4,"gamma":2.4000000000000004,"metallicSpecularDefine":"SPECULAR","normalDistributionDefine":"BLINNPHONG","fresnelDefine":"SCHLICK","geometryDefine":"SMITH_SCHLICK_GGX","energyRatioDefine":"FresnelDiff","roughnessGlossinessDefine":"ROUGHNESS","specAA":"TOKSVIG","DiffuseMap":"NONE","NormalMap":"NONE","RoughnessMap":"NONE","MetallicMap":"NONE","EnvMap":"Arches_E_PineTree"}}},"closed":false,"folders":{"Colors":{"preset":"Default","closed":false,"folders":{}},"PBR":{"preset":"Default","closed":false,"folders":{}},"light":{"preset":"Default","closed":false,"folders":{}},"Equations":{"preset":"Default","closed":false,"folders":{}},"Texture":{"preset":"Default","closed":false,"folders":{}}}};
 
-    var gui = new dat.GUI();
+
+    var gui = new dat.GUI({load: presets});
+
     // setup GUI
     gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre', 'raceship', 'gun' ] )
         .onChange( getModelJson );
@@ -811,13 +831,19 @@ function setEnvironment(name, background) {
 
     f4.add( pbrGui, 'metallicSpecularDefine', [ 'METALLIC', 'SPECULAR' ] )
         .onChange( updateShader );
-    f4.add( pbrGui, 'normalDistributionDefine', [ 'GGX', 'BLINNPHONG', 'BLINNPHONGTOKSVIG', 'BECKMANN' ] )
+    f4.add( pbrGui, 'normalDistributionDefine', [ 'GGX', 'BLINNPHONG', 'BECKMANN' ] )
         .onChange( updateShader );
     f4.add( pbrGui, 'fresnelDefine', [ 'NONE', 'SCHLICK', 'COOKTORRANCE' ] )
         .onChange( updateShader );
-    f4.add( pbrGui, 'geometricDefine', [ 'IMPLICIT', 'NEUMANN', 'COOKTORRANCE', 'KELEMEN', 'SMITH_BECKMANN', 'SMITH_GGX', 'SMITH_SCHLICK_GGX' ] )
+    f4.add( pbrGui, 'geometryDefine', [ 'IMPLICIT', 'NEUMANN', 'WALTER', 'COOKTORRANCE', 'KELEMEN', 'SMITH_BECKMANN', 'SMITH_GGX', 'SMITH_SCHLICK_GGX', 'SCHLICK' ] )
+        .onChange( updateShader );
+
+    f4.add( pbrGui, 'energyRatioDefine', [ 'NONE', 'PI', 'FresnelDiff', 'FresnelSpec' ] )
         .onChange( updateShader );
     f4.add( pbrGui, 'roughnessGlossinessDefine', [ 'ROUGHNESS', 'GLOSSINESS' ] )
+        .onChange( updateShader );
+
+    f4.add( pbrGui, 'specAA', [ 'NONE', 'TOKSVIG' ] )
         .onChange( updateShader );
 
 
@@ -832,14 +858,18 @@ function setEnvironment(name, background) {
         .onChange( updateShader );
     f5.add( pbrGui, 'MetallicMap', [ 'NONE', 'BASE', 'CERBERUS' ] )
         .onChange( updateShader );
-    f5.add( pbrGui, 'EnvMap', [ 'NONE', 'CITY' ] )
+    f5.add( pbrGui, 'EnvMap', [ 'NONE', 'Alexs_Apartment', 'Arches_E_PineTree', 'GrandCanyon_C_YumaPoint', 'Milkyway', 'Walk_Of_Fame' ] )
         .onChange( updateShader );
+
+
 
     gui.add( pbrGui, 'Precision', [ 'HIGH', 'MEDIUM', 'LOW' ] )
         .onChange( updateShader );
 
     gui.add( pbrGui, 'reload' );
+
     gui.remember( pbrGui );
+
 
 
     // The 3D canvas.
@@ -863,24 +893,11 @@ function setEnvironment(name, background) {
 
 
     var size = 500;
-    var background = getEnvSphere(size, root);
+    background = getEnvSphere(size, root);
     background.getOrCreateStateSet().addUniform(exposure);
     background.getOrCreateStateSet().addUniform(gamma);
 
-
-   /*
-    // gui
-    document.getElementById('rangeExposure').onchange = function() {
-	    uniformCenter.set(parseFloat(this.value));
-    }
-    document.getElementById('rangeGamma').onchange = function() {
-	    uniformGamma.set(parseFloat(this.value));
-    }
-    document.getElementById('texture').onchange = function() {
-	    setEnvironment(this.value, background, ground);
-    }
-*/
-    setEnvironment('Alexs_Apartment', background);
+    setEnvironment('Milkyway');
 
     //root.addChild(background);
 
@@ -888,6 +905,7 @@ function setEnvironment(name, background) {
 
     viewer.setupManipulator();
     viewer.run();
+
 };
 
 window.addEventListener( 'load', main, true );

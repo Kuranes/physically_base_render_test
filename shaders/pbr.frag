@@ -1,9 +1,9 @@
 #define PI 3.14159265359
 
 
-////////////http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
-////////////http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
-/////////////http://www.thetenthplanet.de/archives/255
+////////////  http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
+////////////  http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
+///////////// http://www.thetenthplanet.de/archives/255
 
 ////////////////////////////////////////////////////////////////////////
 // -------------------------- Helper functions--------------------------
@@ -22,111 +22,81 @@ vec3 pow_vec3(vec3 v, float p)
 vec3 ToLinear(vec3 v, float gamma) { return pow_vec3(v,     gamma); }
 vec3 ToSRGB(vec3 v, float gamma)   { return pow_vec3(v, 1.0/gamma); }
 
+
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- Normal distribution functions --------------
 /////////////////////////////////////////////////////////////////////////
 
-// Compute the "Toksvig Factor"
-// http://blog.selfshadow.com/2011/07/22/specular-showdown/
-float Gloss(vec3 bump, float power)
-{
-    float gloss = 1.0;
-    // Compute the "Toksvig Factor"
-    float rlen = 1.0 / saturate(length(bump));
-    gloss = 1.0 / (1.0 + power * (rlen - 1.0));
-    return gloss;
-}
-
-
-float NormalDistribution_Toksvig_BlinnPhong(vec3 n, float a, float NdH)
-{
-   // Compute 'anti-aliasing' gloss map
-    float gloss = Gloss(n, a);
-
-    // Energy conserving Blinn-Phong
-    a     = a * gloss;
-    //float spec = pow(NdH, a)*(a + 2.0)/( 8.0 );
-    //return  spec;
-    float spec = pow(NdH, 2.0 / (a) - 2.0);
-    return (1.0 / (PI * a)) * spec;
-}
-
-
-float NormalDistribution_GGX(float a, float NdH)
+float NormalDistribution_GGX(float alpha, float NdH)
 {
     // Isotropic ggx.
-    float a2 = a*a;
+    float rSq = alpha * alpha;
     float NdH2 = NdH * NdH;
-    float denominator = NdH2 * (a2 - 1.0) + 1.0;
+    float denominator = NdH2 * (rSq - 1.0) + 1.0;
     denominator *= denominator;
     denominator *= PI;
 
-    return a2 / denominator;
+    return rSq / denominator;
 }
 
-float NormalDistribution_BlinnPhong(float a, float NdH)
+float NormalDistribution_BlinnPhong(float alpha, float NdH)
 {
-    float a2 = a*a;
-    return (1.0 / (PI * a2)) * pow(NdH, 2.0 / (a2) - 2.0);
+
+    float rSq = alpha * alpha;
+    float m = (2.0 / rSq) - 2.0;
+    //return (m+2.0) * pow( NdH, m) / (2.0 * PI);
+    return pow(NdH, m) / (PI * rSq);
 }
 
-float NormalDistribution_Beckmann(float a, float NdH)
+float NormalDistribution_Beckmann(float alpha, float NdH)
 {
-    float a2 = a * a;
-    float NdH2 = NdH * NdH;
-
-    return (1.0/(PI * a2 * NdH2 * NdH2 + 0.001)) * exp( (NdH2 - 1.0) / ( a2 * NdH2));
+    float m_Sq = alpha * alpha;
+    float NdH_Sq = NdH * NdH;
+    return exp( (NdH_Sq - 1.0)/(m_Sq * NdH_Sq) ) / (PI * m_Sq * NdH_Sq * NdH_Sq + 0.0001) ;
 }
 
 // DISTRIBUTION USAGE
 /////////////////////////
 float Specular_D(vec3 n, float a, float NdH)
 {
-
-#ifdef NDF_BLINNPHONGTOKSVIG
-    return NormalDistribution_Toksvig_BlinnPhong(n, a, NdH);
-#else
-#ifdef NDF_BLINNPHONG
+#if defined(NDF_BLINNPHONG)
     return NormalDistribution_BlinnPhong(a, NdH);
-#else
-#ifdef NDF_BECKMANN
+#elif defined(NDF_BLINNPHONG)
     return NormalDistribution_Beckmann(a, NdH);
-#else
-#ifdef NDF_GGX
+#elif defined(NDF_GGX)
     return NormalDistribution_GGX(a, NdH);
-#endif
-#endif
-#endif
+#else
+    return 1.0;
 #endif
 }
 
 /////////////////////////////////////////////////////////////////////////
-//-------------------------- Geometric shadowing ------------------------
+//-------------------------- Geometry shadowing ------------------------
 /////////////////////////////////////////////////////////////////////////
-float Geometric_Implicit(float a, float NdV, float NdL)
+float Geometry_Implicit(float alpha, float NdV, float NdL)
 {
     return NdL * NdV;
 }
 
-float Geometric_Neumann(float a, float NdV, float NdL)
+float Geometry_Neumann(float alpha, float NdV, float NdL)
 {
     return (NdL * NdV) / max(NdL, NdV);
 }
 
-float Geometric_CookTorrance(float a, float NdV, float NdL, float NdH, float VdH)
+float Geometry_CookTorrance(float alpha, float NdV, float NdL, float NdH, float VdH)
 {
     float numer = ( 2.0 * NdH ) / VdH ;
     return min(1.0, min(numer * NdV, numer * NdL));
 }
 
-float Geometric_Kelemen(float a, float NdV, float NdL, float LdV)
+float Geometry_Kelemen(float alpha, float NdV, float NdL, float LdV)
 {
     return (2.0 * NdL * NdV) / (1.0 + LdV);
 }
 
-float Geometric_Beckman(float a, float dotValue)
+float Geometry_Beckman(float rSq, float dotValue)
 {
-    float c = dotValue / ( a * sqrt(1.0 - dotValue * dotValue));
+    float c = dotValue / ( rSq * sqrt(1.0 - dotValue * dotValue));
 
     if ( c >= 1.6 )
     {
@@ -139,69 +109,75 @@ float Geometric_Beckman(float a, float dotValue)
     }
 }
 
-float Geometric_Smith_Beckmann(float a, float NdV, float NdL)
+float Geometry_Smith_Beckmann(float alpha, float NdV, float NdL)
 {
-    return Geometric_Beckman(a, NdV) * Geometric_Beckman(a, NdL);
+    return Geometry_Beckman(alpha, NdV) * Geometry_Beckman(alpha, NdL);
 }
 
-float Geometric_GGX(float a2, float dotValue)
+float Geometry_GGX(float aSq, float dotValue)
 {
-    return (2.0 * dotValue) / (dotValue + sqrt(a2 + ((1.0 - a2) * (dotValue * dotValue))));
+    return (2.0 * dotValue) / (dotValue + sqrt(aSq + ((1.0 - aSq) * (dotValue * dotValue))));
 }
 
-float Geometric_Smith_GGX(float a, float NdV, float NdL)
+float Geometry_Smith_GGX(float alpha, float NdV, float NdL)
 {
-    float a2 = a * a;
-    return Geometric_GGX(a2, NdV) * Geometric_GGX(a2, NdL);
+    float aSq = alpha * alpha;
+    return Geometry_GGX(aSq, NdV) * Geometry_GGX(aSq, NdL);
 }
 
-float Geometric_Smith_Schlick_GGX(float a, float NdV, float NdL)
+float Geometry_Smith_Schlick_GGX(float alpha, float NdV, float NdL)
 {
-    // Smith schlick-GGX.
-    float k = a * 0.5;
-    float GV = NdV / (NdV * (1.0 - k) + k);
-    float GL = NdL / (NdL * (1.0 - k) + k);
-
+    float k = alpha * 0.5;
+    float one_minus_k = 1.0 -k;
+    float GV = NdV / (NdV * one_minus_k + k);
+    float GL = NdL / (NdL * one_minus_k + k);
     return GV * GL;
 }
 
-// GEOMETRIC TERM
+float Geometry_Schlick(float alpha, float NdV, float NdL){
+    float k = alpha * sqrt(2.0/PI);
+    float one_minus_k = 1.0 -k;
+    float GV = NdV / (NdV * one_minus_k + k);
+    float GL = NdL / (NdL * one_minus_k + k);
+    return GV + GL;
+}
+
+float Geometry_Walter(float alpha, float NdV, float NdL, float NdH, float VdH, float HdL){
+    float a = 1.0 / ( alpha * tan( acos(NdV) ) );
+    float a_Sq = a * a;
+    float a_term;
+    if (a < 1.6)
+        a_term= (3.535 * a + 2.181 * a_Sq)/(1.0 + 2.276 * a + 2.577 * a_Sq);
+    else
+        a_term= 1.0;
+
+   return  ( step(0.0, HdL/NdL) * a_term  ) *
+        ( step(0.0, VdH/NdV) * a_term  ) ;
+}
+
+// GEOMETRY TERM
 ////////////////////
-float Specular_G(float a, float NdV, float NdL, float NdH, float VdH, float LdV)
+float Specular_G(float alpha, float NdV, float NdL, float NdH, float VdH, float HdL, float LdV)
 {
 
-#ifdef GEOMETRIC_IMPLICIT
-    return Geometric_Implicit(a, NdV, NdL);
-#else
-
-#ifdef GEOMETRIC_NEUMANN
-    return Geometric_Neumann(a, NdV, NdL);
-#else
-
-#ifdef GEOMETRIC_COOKTORRANCE
-    return Geometric_CookTorrance(a, NdV, NdL, NdH, VdH);
-#else
-
-#ifdef GEOMETRIC_KELEMEN
-    return Geometric_Kelemen(a, NdV, NdL, LdV);
-#else
-
-#ifdef GEOMETRIC_SMITH_BECKMANN
-    return Geometric_Smith_Beckmann(a, NdV, NdL);
-#else
-
-#ifdef GEOMETRIC_SMITH_GGX
-    return Geometric_Smith_GGX(a, NdV, NdL);
-#else
-
-#ifdef GEOMETRIC_SMITH_SCHLICK_GGX
-    return Geometric_Smith_Schlick_GGX(a, NdV, NdL);
-#endif
-#endif
-#endif
-#endif
-#endif
-#endif
+#if defined(GEOMETRY_IMPLICIT)
+    return Geometry_Implicit(alpha, NdV, NdL);
+#elif defined(GEOMETRY_NEUMANN)
+    return Geometry_Neumann(alpha, NdV, NdL);
+#elif defined(GEOMETRY_WALTER)
+    return Geometry_Walter(alpha, NdV, NdL, NdH, VdH, HdL);
+#elif defined(GEOMETRY_COOKTORRANCE)
+    return Geometry_CookTorrance(alpha, NdV, NdL, NdH, VdH);
+#elif defined(GEOMETRY_KELEMEN)
+    return Geometry_Kelemen(alpha, NdV, NdL, LdV);
+#elif defined(GEOMETRY_SMITH_BECKMANN)
+    return Geometry_Smith_Beckmann(alpha, NdV, NdL);
+#elif defined(GEOMETRY_SMITH_GGX)
+    return Geometry_Smith_GGX(alpha, NdV, NdL);
+#elif defined(GEOMETRY_SMITH_SCHLICK_GGX)
+    return Geometry_Smith_Schlick_GGX(alpha, NdV, NdL);
+#elif defined(GEOMETRY_SCHLICK)
+    return Geometry_Schlick(alpha, NdV, NdL);
 #endif
 }
 
@@ -215,14 +191,14 @@ vec3 Fresnel_None(vec3 specularColor)
 
 vec3 Fresnel_Schlick(vec3 specularColor, vec3 h, vec3 v)
 {
-    return (specularColor + (1.0 - specularColor) * pow((1.0 - saturate(dot(v, h))), 5.0));
+    return (specularColor + (1.0 - specularColor) * pow((1.0 - max(0.0, dot(v, h))), 5.0));
 }
 
 vec3 Fresnel_CookTorrance(vec3 specularColor, vec3 h, vec3 v)
 {
     vec3 sqrtSpec = sqrt(specularColor);
     vec3 n = (1.0 + sqrtSpec) / (1.0 - sqrtSpec);
-    float c = saturate(dot(v, h));
+    float c = max(dot(v, h), 0.0);
     vec3 g = sqrt(n * n + c * c - 1.0);
 
     vec3 part1 = (g - c)/(g + c);
@@ -235,75 +211,89 @@ vec3 Fresnel_CookTorrance(vec3 specularColor, vec3 h, vec3 v)
 /////////////////////////
 vec3 Specular_F(vec3 specularColor, vec3 h, vec3 v)
 {
-#ifdef FRESNEL_NONE
-    return Fresnel_None(specularColor);
-#else
-#ifdef FRESNEL_SCHLICK
+#if defined(FRESNEL_SCHLICK)
     return Fresnel_Schlick(specularColor, h, v);
-#else
-#ifdef FRESNEL_COOKTORRANCE
+#elif defined(FRESNEL_COOKTORRANCE)
     return Fresnel_CookTorrance(specularColor, h, v);
-#endif
-#endif
+#else // FRESNSEL_NONE
+    return Fresnel_None(specularColor);
 #endif
 }
 
 // ROUGHNESS
 /////////////////////////
-vec3 Specular_F_Roughness(vec3 specularColor, float a, vec3 h, vec3 v)
+vec3 Specular_F_Roughness(vec3 specularColor, float alpha, vec3 h, vec3 v)
 {
-#ifdef FRESNEL_SCHLICK
+#if defined(FRESNEL_SCHLICK)
     // Sclick using roughness to attenuate fresnel.
-    return (specularColor + (max(vec3(1.0-a), specularColor) - specularColor) * pow((1.0 - saturate(dot(v, h))), 5.0));
-#else
-#ifdef FRESNEL_NONE
-    return Fresnel_None(specularColor);
-#else
-#ifdef FRESNEL_COOKTORRANCE
+    return (specularColor + (max(vec3(1.0-alpha), specularColor) - specularColor) * pow(1.0 - max(dot(v, h),0.0), 5.0));
+#elif defined(FRESNEL_COOKTORRANCE)
     return Fresnel_CookTorrance(specularColor, h, v);
-#endif
-#endif
+#else //FRESNEL_NONE
+    return Fresnel_None(specularColor);
 #endif
 }
 
 
+/////////////////////////////////////////////////////////////////////////
+//-------------------------- Diffuse Energy Conservation ----------------
+/////////////////////////////////////////////////////////////////////////
 
+vec3 ComputeDiffuseEnergyConservation(vec3 specularColor, vec3 fresnelSpec)
+{
+#if defined(EnergyRatio_FresnelDiff)
+    return vec3(1.0 - fresnelSpec);
+#elif defined(EnergyRatio_FresnelSpec)
+    return (vec3(1.0) - specularColor);
+#elif defined(EnergyRatio_PI)
+    return vec3(1.0 / PI);
+#else
+    return vec3(1.0);
+#endif
+}
 
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- LIGHT EQUATION -----------------------------
 /////////////////////////////////////////////////////////////////////////
 
 
-vec3 ComputeDiffuse(vec3 pAlbedo)
-{
-    return pAlbedo / PI;
-}
-
- vec3 ComputeSpecular(vec3 specularColor, vec3 normal, vec3 h, vec3 v, vec3 l, float a, float NdL, float NdV, float NdH, float VdH, float LdV)
-{
-    return (Specular_D(normal, a, NdH) * Specular_G(a, NdV, NdL, NdH, VdH, LdV) * Specular_F(specularColor, v, h) ) / (4.0 * NdL * NdV + 0.0001);
-}
-
 vec3 ComputeLight(vec3 albedoColor,vec3 specularColor, vec3 normal, float roughness, vec3 lightPosition, vec3 lightColor, vec3 lightDir, vec3 viewDir)
 {
     // Compute some useful values.
-    float NdL = saturate(dot(normal, lightDir));
-    float NdV = saturate(dot(normal, viewDir));
+    float NdL = max(dot(normal, lightDir), 0.0);
+    float NdV = max(dot(normal, viewDir), 0.0);
     vec3 h = normalize(lightDir + viewDir);
-    float NdH = saturate(dot(normal, h));
-    float VdH = saturate(dot(viewDir, h));
-    float LdV = saturate(dot(lightDir, viewDir));
-    float a = max(0.001, roughness * roughness);
+    float NdH = max(dot(normal, h), 0.0);
+    float VdH = max(dot(viewDir, h), 0.0);
+    float HdL = max(dot(h, lightDir), 0.0);
+    float LdV = max(dot(lightDir, viewDir), 0.0);
+    float a = max(0.0001, roughness * roughness);
 
-    vec3 cDiff = ComputeDiffuse(albedoColor);
-    vec3 cSpec = ComputeSpecular(specularColor, normal, h, viewDir, lightDir, a, NdL, NdV, NdH, VdH, LdV);
+    float spec = Specular_D(normal, a, NdH);
+    spec *= Specular_G(a, NdV, NdL, NdH, VdH, HdL, LdV);
+    spec /= (4.0 * NdL * NdV + 0.0001);
+    vec3 fresnelSpec = Specular_F(specularColor, viewDir, h);
 
-    return lightColor * NdL * (cDiff * (1.0 - cSpec) + cSpec);
+    vec3 cSpec = spec * fresnelSpec;
+    vec3 cDiff = albedoColor * ComputeDiffuseEnergyConservation (specularColor, cSpec);
+
+    return lightColor * NdL * (cDiff + cSpec);
 }
 
 /////////////////////////////////////////////////////////////////////////
-//-------------------------- NORMAL MAP (derivatives, aa, etc)-----------
+//-------------------------- NORMAL MAP (toksvig, derivatives, aa, etc)-----------
 /////////////////////////////////////////////////////////////////////////
+
+// Compute the "Toksvig Factor"
+// http://blog.selfshadow.com/2011/07/22/specular-showdown/
+float Gloss(vec3 bump, float power)
+{
+    float gloss = 1.0;
+    // Compute the "Toksvig Factor"
+    float rlen = 1.0 / saturate(length(bump));
+    gloss = 1.0 / (1.0 + power * (rlen - 1.0));
+    return gloss;
+}
 
 #ifdef GL_OES_standard_derivativesd
 
@@ -329,7 +319,6 @@ mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
     return mat3( T * invmax, B * invmax, N );
 }
 
-#define WITH_NORMALMAP_UNSIGNED 1
 
 vec3 perturb_normal( vec3 N, vec3 map, vec3 V, vec2 texcoord )
 {
@@ -350,8 +339,6 @@ vec3 perturb_normal( vec3 N, vec3 map, vec3 V, vec2 texcoord )
 }
 
 #else
-
-#define WITH_NORMALMAP_UNSIGNED 1
 
 vec3 perturb_normal( vec3 N, vec3 T,  vec3 map, vec3 V, vec2 texcoord )
 {
@@ -476,6 +463,7 @@ void main(void)
 #else
     float roughness = Roughness;
 #endif
+
 #ifdef USE_GLOSSINESS
     roughness = 1.0 - roughness;
 #endif
@@ -483,11 +471,13 @@ void main(void)
 
 
 #ifdef METALLIC
+
 #ifdef USE_METALLIC_MAP
     float metallic = texture2D(Texture2, texcoord0).r;
 #else
     float metallic = Metallic;
 #endif
+
 #elif SPECULAR
     vec3 specularColor = Specular.xyz;
 #endif
@@ -508,6 +498,12 @@ void main(void)
     #else
           vec3 normalN = perturb_normal( normal.xyz, tangent.xyz, texture2D(Texture3, texcoord0.xy).xyz, -viewDir, texcoord0.xy );
     #endif
+
+    #ifdef USE_TOKSVIG
+          // mipmap normal map
+          roughness = Gloss(normalN, roughness);
+    #endif
+
 #else
     vec3 normalN = normalize(normal.xyz);
 #endif
