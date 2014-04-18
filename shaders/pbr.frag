@@ -1,5 +1,5 @@
-#define PI 3.14159265359
-
+#define PI    3.14159265359
+#define INVPI 0.31830988618
 
 ////////////  http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
 ////////////  http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
@@ -13,14 +13,60 @@ float saturate(float v)
 {
     return clamp(v, 0.0, 1.0);
 }
-
-vec3 pow_vec3(vec3 v, float p)
+vec3 pow_vec3_f(vec3 v, float p)
 {
-    return vec3(pow(v.x, p), pow(v.y, p), pow(v.z, p));
+    return pow(v, vec3(p));
 }
 
-vec3 ToLinear(vec3 v, float gamma) { return pow_vec3(v,     gamma); }
-vec3 ToSRGB(vec3 v, float gamma)   { return pow_vec3(v, 1.0/gamma); }
+
+////////////////////////////////////////////////////////////////////////
+// -------------------------- LinearSpace ------------------------------
+////////////////////////////////////////////////////////////////////////
+// http://filmicgames.com/archives/14
+float LinearToSrgb(float val)
+{
+   float ret;
+   if (val <= 0.0)
+      ret = 0.0;
+   else if (val <= 0.0031308)
+      ret = 12.92*val;
+   else if (val <= 1.0)
+      ret = (pow(val, 0.41666)*1.055)-0.055;
+   else
+      ret = 1.0;
+   return ret;
+}
+
+float SrgbToLinear(float val)
+{
+   float ret;
+   if (val <= 0.0)
+      ret = 0.0;
+   else if (val <= 0.04045)
+      ret = val / 12.92;
+   else if (val <= 1.0)
+      ret = pow((val + 0.055)/1.055,2.4);
+   else
+      ret = 1.0;
+   return ret;
+}
+
+vec3 ToLinear(vec3 v, float gamma) {
+    if (gamma == 2.2)
+        return vec3(SrgbToLinear(v.x), SrgbToLinear(v.y), SrgbToLinear(v.z));
+    else if (gamma == 2.0)
+        return v*v;
+    else
+        return pow_vec3_f(v, gamma);
+}
+vec3 ToSRGB(vec3 v, float gamma)   {
+    if (gamma == 2.2)
+        return vec3(LinearToSrgb(v.x), LinearToSrgb(v.y), LinearToSrgb(v.z));
+    else if (gamma == 2.0)
+        return sqrt(v);
+    else
+        return pow_vec3_f(v, 1.0/gamma);
+}
 
 
 /////////////////////////////////////////////////////////////////////////
@@ -385,16 +431,29 @@ vec3 decodeRGBE(vec4 rgbe) {
     return rgbe.rgb * 255.0 * f;
 }
 
-// apply some gamma correction (http://www.geeks3d.com/20101001/tutorial-gamma-correction-a-story-of-linearity/)
-vec3 toneMapHDR(vec3 rgb, float exposure, float gamma) {
-    return pow(rgb * exposure, 1.0 / vec3(gamma));
-}
-
 // fetch from environment sphere texture
-vec4 textureSphere(sampler2D tex, vec3 n) {
-    float yaw = acos(n.y) / PI;
-    float pitch = (atan(n.x, n.z) + PI) / (2.0 * PI);
-    return texture2D(tex, vec2(pitch, yaw));
+ vec4 textureSphere(sampler2D tex, vec3 r) {
+
+ #define OPT_SPHERE_SAMPLE_GET 1
+#ifdef OPT_SPHERE_SAMPLE_GET
+    /*vec2 vN;
+     vN.y = -r.y;
+     float m = PI * 0.8  * sqrt((r.x) * (r.x) + (r.y) * (r.y) + (r.z ) * (r.z ));
+      vN.x = r.z / m ;
+      vN = vN * vec2(0.5) + vec2(0.5);
+      return texture2D(tex, vN);*/
+    vec2 vN;
+    vN.y = -r.y;
+    vN.x = atan( r.z,  r.x ) * INVPI;
+    vN = vN * vec2(0.5) + vec2(0.5);
+    return texture2D(tex, vN);
+#else
+    float yaw = acos(r.y) / PI;
+    float pitch = (atan(r.x, r.z) + PI) / (2.0 * PI);
+    vec2 vN = vec2(pitch, yaw);
+    return texture2D(tex, vN);
+#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -525,21 +584,21 @@ void main(void)
     vec3 light1 = ComputeLight( realAlbedo.xyz, realSpecularColor.xyz,  normalN.xyz,  roughness,  lightPos.xyz, lightColor.xyz, lightDir.xyz, viewDir.xyz);
 
     float lightDistLength = length(lightDist);
-    //lightDistLength *= lightDistLength;
+    lightDistLength *= lightDistLength;
     float attenuation = lightIntensity + PI / lightDistLength;
     light1 = attenuation * light1 ;
 
 #ifdef USE_ENV_MAP
     vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
     //float mipIndex =  roughness * roughness * 8.0f; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
-    vec3 envColor = toneMapHDR(decodeRGBE(textureSphere(Texture4, reflectVector)), Exposure, Gamma);
-    vec3 irradiance = toneMapHDR(decodeRGBE(textureSphere(Texture5, normalN)), Exposure, Gamma);
+    vec3 envColor = decodeRGBE(textureSphere(Texture4, reflectVector ));
+    vec3 irradiance = decodeRGBE(textureSphere(Texture5, normalN));
     vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
     vec3 envContrib = envFresnel * envColor;
 #else
     vec3 envContrib = vec3(0.0);
 #endif
 
-    gl_FragColor = vec4(ToSRGB(light1  + envContrib + realAlbedo, Gamma), 1.0);
+    gl_FragColor = vec4(ToSRGB(Exposure + (light1  + envContrib + realAlbedo), Gamma), 1.0);
 
 }
