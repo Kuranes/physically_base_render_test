@@ -26,6 +26,8 @@ var main = function () {
     };
 
     var callBackLoaded = function (model){
+        rootModelNode.removeChildren();
+        rootModelNode.addChild( model );
         cbFocusCamera();
         myStateSet = model.getOrCreateStateSet();
         updateShader();
@@ -270,8 +272,8 @@ var main = function () {
     } );
 
     // setup GUI
-    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre', 'raceship', 'gun' ] )
-        .onChange( getModelJson );
+    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre',  'gun' ] )
+        .onChange( function(value){ getModelJson(value, rootModelNode, callBackLoaded); } );
     var f1 = gui.addFolder( 'Colors' );
     f1.addColor( pbrGui, 'Albedo' )
         .onChange( update );

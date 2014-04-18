@@ -149,7 +149,7 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
         var dataProxyLoader;
 
 
-        var parseModel = function () {
+        var parseModel = function (rootModelNode, callBackLoaded) {
 
             // add hook to use the manager when loading osgjs files
             var opts = {};
@@ -196,9 +196,6 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
 
             Q.when( promise )
                 .then( function ( child ) {
-                    rootModelNode.removeChildren();
-                    rootModelNode.addChild( child );
-
                     callBackLoaded( child );
                     console.log( 'success ' );
                     if ( jsonp ) {
@@ -209,7 +206,7 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
 
         };
 
-        var loadModel = function ( url ) {
+        var loadModel = function ( url, rootModelNode, callBackLoaded ) {
 
             if ( jsonp ) {
                 console.log( 'loading jsonp ' + url );
@@ -227,7 +224,7 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
                         break;
                     }
                     console.log( 'parse jsonp ' + url );
-                    parseModel();
+                    parseModel(rootModelNode, callBackLoaded);
                 };
                 dataProxyLoader.onerror = function () {
                     osg.log( 'error ' + url );
@@ -246,7 +243,7 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
                             var response = dataProxyLoader.responseText;
                             NodeModel = JSON.parse( response );
                             console.log( 'parse json ' + url );
-                            parseModel();
+                            parseModel(rootModelNode, callBackLoaded);
                         }
                     }
                     // console.log('Error', dataProxyLoader.statusText, dataProxyLoader.status, dataProxyLoader.readyState);
@@ -259,7 +256,7 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
 
         };
         console.log( 'osgjs loading: ' + modelName );
-        loadModel( urlModel );
+        loadModel( urlModel, rootModelNode, callBackLoaded);
         return rootModelNode;
     }
 
