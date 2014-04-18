@@ -20,13 +20,15 @@ Physically Base Render : Equation playground
 - IBL & area lights
 - tiled/forward/deferred
 
-## Thanks & Sources
+## Thanks 
 
-### Alexandre Pestana for the idea and dx11 implementations of pbr_viewer
-- http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
-- 
+Alexandre Pestana for the idea, dx11 shader implementations of a [pbr_viewer](
+http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/)
+
+## Sources
+
 ### The Book
-- http://www.pbrt.org/ (+ [related paper]( http://www.pbrt.org/papers.php))
+- http://www.pbrt.org/ (+ [related paper](http://www.pbrt.org/papers.php))
 
 ### PBR Equation details
 - http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
