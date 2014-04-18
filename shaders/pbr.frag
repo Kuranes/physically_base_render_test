@@ -107,7 +107,7 @@ float Specular_D(vec3 n, float a, float NdH)
 {
 #if defined(NDF_BLINNPHONG)
     return NormalDistribution_BlinnPhong(a, NdH);
-#elif defined(NDF_BLINNPHONG)
+#elif defined(NDF_BECKMANN)
     return NormalDistribution_Beckmann(a, NdH);
 #elif defined(NDF_GGX)
     return NormalDistribution_GGX(a, NdH);
@@ -341,7 +341,7 @@ float Gloss(vec3 bump, float power)
     return gloss;
 }
 
-#ifdef GL_OES_standard_derivativesd
+#ifdef GL_OES_standard_derivatives
 
 #extension GL_OES_standard_derivatives : enable
 // better, faster, stronger
@@ -434,7 +434,7 @@ vec3 decodeRGBE(vec4 rgbe) {
 // fetch from environment sphere texture
  vec4 textureSphere(sampler2D tex, vec3 r) {
 
- #define OPT_SPHERE_SAMPLE_GET 1
+ #define OPT_SPHERE_SAMPLE_GET 0
 #ifdef OPT_SPHERE_SAMPLE_GET
     /*vec2 vN;
      vN.y = -r.y;
@@ -500,7 +500,7 @@ uniform vec4 Specular;
 uniform float Metallic;
 uniform float Roughness;
 
-uniform float LightIntensity;
+ uniform float LightIntensity;
 uniform float Gamma;
 uniform float Exposure;
 uniform vec4 LightColor;
@@ -530,15 +530,11 @@ void main(void)
 
 
 #ifdef METALLIC
-
 #ifdef USE_METALLIC_MAP
     float metallic = texture2D(Texture2, texcoord0).r;
 #else
     float metallic = Metallic;
 #endif
-
-#elif SPECULAR
-    vec3 specularColor = Specular.xyz;
 #endif
 
   vec4 lightPosition = lightPos;
@@ -552,7 +548,7 @@ void main(void)
     vec3 lightDir = normalize(lightDist);
 
 #ifdef USE_NORMAL_MAP
-    #ifdef GL_OES_standard_derivativesd
+    #ifdef GL_OES_standard_derivatives
           vec3 normalN = perturb_normal( normal.xyz, texture2D(Texture3, texcoord0.xy).xyz, viewDir, texcoord0.xy );
     #else
           vec3 normalN = perturb_normal( normal.xyz, tangent.xyz, texture2D(Texture3, texcoord0.xy).xyz, -viewDir, texcoord0.xy );
@@ -571,15 +567,12 @@ void main(void)
 #ifdef METALLIC
     // Lerp with metallic value to find the good diffuse and specular.
     vec3 realAlbedo = albedoColor - albedoColor * metallic;
-
     // 0.03 default specular value for dielectric.
     vec3 realSpecularColor = mix(vec3(0.03), albedoColor, metallic);
-#elif SPECULAR
-
+#else // defined(SPECULAR)
     vec3 realAlbedo = albedoColor;
-    vec3 realSpecularColor = specularColor;
-
-#endif // METALLIC
+    vec3 realSpecularColor = Specular.xyz;;
+#endif
 
     vec3 light1 = ComputeLight( realAlbedo.xyz, realSpecularColor.xyz,  normalN.xyz,  roughness,  lightPos.xyz, lightColor.xyz, lightDir.xyz, viewDir.xyz);
 
@@ -601,6 +594,6 @@ void main(void)
     vec3 irradiance = vec3(0.0);
 #endif
 
-    gl_FragColor = vec4(ToSRGB(Exposure + (light1 + realAlbedo*irradiance + envContrib), Gamma), 1.0);
+    gl_FragColor = vec4(ToSRGB(Exposure + (lightIntensity * light1 + realAlbedo*irradiance + envContrib), Gamma), 1.0);
 
 }

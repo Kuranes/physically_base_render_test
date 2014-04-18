@@ -373,7 +373,7 @@ var main = function () {
 
     f3.addColor( pbrGui, 'lightColor' )
         .onChange( update );
-    f3.add( pbrGui, 'lightIntensity', 0.0, 5.0 )
+    f3.add( pbrGui, 'lightIntensity', 0.0, 10.0 )
         .step( 0.1 )
         .onChange( update );
     f3.add( pbrGui, 'gamma', 0.0, 5.0 )
