@@ -585,20 +585,22 @@ void main(void)
 
     float lightDistLength = length(lightDist);
     lightDistLength *= lightDistLength;
-    float attenuation = lightIntensity + PI / lightDistLength;
+    float attenuation =  PI / lightDistLength;
     light1 = attenuation * light1 ;
 
 #ifdef USE_ENV_MAP
+    vec3 irradiance = decodeRGBE(textureSphere(Texture5, normalN));
+
     vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
     //float mipIndex =  roughness * roughness * 8.0f; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
     vec3 envColor = decodeRGBE(textureSphere(Texture4, reflectVector ));
-    vec3 irradiance = decodeRGBE(textureSphere(Texture5, normalN));
     vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
     vec3 envContrib = envFresnel * envColor;
 #else
     vec3 envContrib = vec3(0.0);
+    vec3 irradiance = vec3(0.0);
 #endif
 
-    gl_FragColor = vec4(ToSRGB(Exposure + (light1  + envContrib + realAlbedo), Gamma), 1.0);
+    gl_FragColor = vec4(ToSRGB(Exposure + (light1 + realAlbedo*irradiance + envContrib), Gamma), 1.0);
 
 }

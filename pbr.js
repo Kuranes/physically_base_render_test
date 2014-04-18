@@ -25,11 +25,12 @@ var main = function () {
             .computeHomePosition();
     };
 
-    var callBackLoaded = function (model){
+    var callBackLoaded = function ( model ) {
         rootModelNode.removeChildren();
         rootModelNode.addChild( model );
         cbFocusCamera();
         myStateSet = model.getOrCreateStateSet();
+        reload = true;
         updateShader();
     }
 
@@ -47,66 +48,83 @@ var main = function () {
     var MetallicMapUniform = osg.Uniform.createInt( 2, 'Texture2' );
     var NormalMapUniform = osg.Uniform.createInt( 3, 'Texture3' );
 
+    var currentChannelTexture = new Array(16);
     var updateTexture = function () {
 
-        switch ( pbrGui.DiffuseMap ) {
-        case 'NONE':
-            myStateSet.removeTextureAttribute( 0, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Albedo.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'CERBERUS':
-
-            myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Cerberus_A.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        }
-        switch ( pbrGui.RoughnessMap ) {
-        case 'NONE':
-            myStateSet.removeTextureAttribute( 1, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Roughness.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Cerberus_R.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
+        if ( reload || currentChannelTexture[0] !== pbrGui.DiffuseMap ){
+            switch ( pbrGui.DiffuseMap ) {
+            case 'NONE':
+                myStateSet.removeTextureAttribute( 0, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'BASE':
+                myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Albedo.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'CERBERUS':
+                myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Cerberus_A.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            }
+            currentChannelTexture[0] = pbrGui.DiffuseMap;
         }
 
-        switch ( pbrGui.MetallicMap ) {
-        case 'NONE':
-            myStateSet.removeTextureAttribute( 2, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Metallic.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Cerberus_M.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
+        if ( reload ||  currentChannelTexture[1] !== pbrGui.RoughnessMap ){
+            switch ( pbrGui.RoughnessMap ) {
+            case 'NONE':
+                myStateSet.removeTextureAttribute( 1, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'BASE':
+                myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Roughness.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'CERBERUS':
+                myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Cerberus_R.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            }
+            currentChannelTexture[1] = pbrGui.RoughnessMap;
         }
 
-        switch ( pbrGui.NormalMap ) {
-        case 'NONE':
-            myStateSet.removeTextureAttribute( 3, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'BASE':
-            myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Normal.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        case 'CERBERUS':
-            myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Cerberus_N.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
+
+        if (  reload || currentChannelTexture[2] !== pbrGui.MetallicMap ){
+            switch ( pbrGui.MetallicMap ) {
+            case 'NONE':
+                myStateSet.removeTextureAttribute( 2, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'BASE':
+                myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Metallic.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'CERBERUS':
+                myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Cerberus_M.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            }
+            currentChannelTexture[2] = pbrGui.MetallicMap;
         }
 
-        switch ( pbrGui.EnvMap ) {
-        case 'NONE':
-            myStateSet.removeTextureAttribute( 4, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            myStateSet.removeTextureAttribute( 5, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-            break;
-        default:
-            setEnvironment( pbrGui.EnvMap, myStateSet, textureEnv, textureHigh, background );
-            break;
+        if (  reload || currentChannelTexture[3] !== pbrGui.NormalMap ){
+
+            switch ( pbrGui.NormalMap ) {
+            case 'NONE':
+                myStateSet.removeTextureAttribute( 3, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'BASE':
+                myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Normal.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            case 'CERBERUS':
+                myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Cerberus_N.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            }
+            currentChannelTexture[3] = pbrGui.NormalMap;
         }
 
+        if (  reload || currentChannelTexture[4] !== pbrGui.EnvMap ){
+            switch ( pbrGui.EnvMap ) {
+            case 'NONE':
+                myStateSet.removeTextureAttribute( 4, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                myStateSet.removeTextureAttribute( 5, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
+            default:
+                setEnvironment( pbrGui.EnvMap, myStateSet, textureEnv, textureHigh, background );
+                break;
+            }
+            currentChannelTexture[4] = pbrGui.EnvMap;
+        }
     };
 
     var updateShader = function () {
@@ -147,8 +165,11 @@ var main = function () {
         this.RoughnessMap = 'NONE';
         this.MetallicMap = 'NONE';
         this.EnvMap = 'Milkyway';
-        this.specAA = 'TOKSVIG'
-        this.reload = function (){ reload = true; updateShader(); };
+        this.specAA = 'NONE';
+        this.reload = function () {
+            reload = true;
+            updateShader();
+        };
         this.Precision = 'HIGH';
     };
 
@@ -202,24 +223,20 @@ var main = function () {
     }
 
 
-    fragShader = loadShader( 'shaders/pbr.frag' );
+    //fragShader = loadShader( 'shaders/pbr.frag' );
     vertShader = loadShader( 'shaders/pbr.vert' );
+    //faster back&forth not needing recompiling.
+    var programCache = [];
+    var vertexShaderCache = [];
+    var fragmentShaderCache = [];
 
     function getShader() {
         if ( reload ) {
             fragShader = loadShader( 'shaders/pbr.frag' );
-            vertShader = loadShader( 'shaders/pbr.vert' );
+            //vertShader = loadShader( 'shaders/pbr.vert' );
             reload = false;
         }
         var currentDefine = '';
-        currentDefine += '#define WITH_NORMALMAP_UNSIGNED 1\n';
-        currentDefine += '#define ' + pbrGui.metallicSpecularDefine + ' 1\n';
-        currentDefine += '#define NDF_' + pbrGui.normalDistributionDefine + ' 1\n';
-        currentDefine += '#define FRESNEL_' + pbrGui.fresnelDefine + ' 1\n';
-        currentDefine += '#define GEOMETRY_' + pbrGui.geometryDefine + ' 1 \n';
-        currentDefine += '#define EnergyRatio_' + pbrGui.energyRatioDefine + ' 1 \n';
-        currentDefine += '#define USE_' + pbrGui.roughnessGlossinessDefine + ' 1 \n';
-        currentDefine += '#define USE_' + pbrGui.specAA + ' 1 \n';
 
         switch ( pbrGui.Precision ) {
         case 'HIGH':
@@ -233,6 +250,16 @@ var main = function () {
             break;
         }
 
+        var vertexshader = currentDefine + vertShader;
+
+        currentDefine += '#define WITH_NORMALMAP_UNSIGNED 1\n';
+        currentDefine += '#define ' + pbrGui.metallicSpecularDefine + ' 1\n';
+        currentDefine += '#define NDF_' + pbrGui.normalDistributionDefine + ' 1\n';
+        currentDefine += '#define FRESNEL_' + pbrGui.fresnelDefine + ' 1\n';
+        currentDefine += '#define GEOMETRY_' + pbrGui.geometryDefine + ' 1 \n';
+        currentDefine += '#define EnergyRatio_' + pbrGui.energyRatioDefine + ' 1 \n';
+        currentDefine += '#define USE_' + pbrGui.roughnessGlossinessDefine + ' 1 \n';
+        currentDefine += '#define USE_' + pbrGui.specAA + ' 1 \n';
 
         if ( pbrGui.DiffuseMap !== 'NONE' ) {
             currentDefine += '#define USE_DIFFUSE_MAP 1 \n';
@@ -256,15 +283,66 @@ var main = function () {
             myStateSet.addUniform( osg.Uniform.createInt1( 5, 'Texture5' ) );
         }
 
-        var vertexshader = currentDefine + vertShader;
         var fragmentshader = currentDefine + fragShader;
 
-        var program = new osg.Program(
-            new osg.Shader( 'VERTEX_SHADER', vertexshader ),
-            new osg.Shader( 'FRAGMENT_SHADER', fragmentshader ) );
+        var vertexShaderObj = null;
+        vertexShaderCache.forEach( function ( cached ) {
+            if ( cached.text === vertexshader ) {
+                vertexShaderObj = cached.shader;
+                return;
+            }
+        } );
+
+        var fragmentShaderObj = null;
+        fragmentShaderCache.forEach( function ( cached ) {
+            if ( cached.text === fragmentshader ) {
+                fragmentShaderObj = cached.shader;
+                return;
+            }
+        } );
+
+        // better index than whole text here...
+        var shaderText = vertexshader + fragmentshader;
+        var programObj;
+        if ( fragmentShaderObj && vertexShaderObj ) {
+
+            programCache.forEach( function ( cachedProgram ) {
+                if ( cachedProgram.text === shaderText ) {
+                    programObj = cachedProgram.program;
+                    return;
+                }
+            } );
+        }
+        if ( programObj )
+            return programObj;
+
+        // Not in cache
+        if ( !vertexShaderObj ) {
+            vertexShaderObj = new osg.Shader( 'VERTEX_SHADER', vertexshader );
+            vertexShaderCache.push( {
+                text: vertexshader,
+                shader: vertexShaderObj
+            } );
+        }
+
+        if ( !fragmentShaderObj ) {
+            fragmentShaderObj = new osg.Shader( 'FRAGMENT_SHADER', fragmentshader );
+            fragmentShaderCache.push( {
+                text: fragmentshader,
+                shader: fragmentShaderObj
+            } );
+
+        }
 
 
-        return program;
+        programObj = new osg.Program( vertexShaderObj, fragmentShaderObj );
+
+        programCache.push( {
+            text: shaderText,
+            program: programObj
+        } );
+
+        return programObj;
     };
 
     var gui = new dat.GUI( {
@@ -272,8 +350,10 @@ var main = function () {
     } );
 
     // setup GUI
-    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre',  'gun' ] )
-        .onChange( function(value){ getModelJson(value, rootModelNode, callBackLoaded); } );
+    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre', 'gun' ] )
+        .onChange( function ( value ) {
+            getModelJson( value, rootModelNode, callBackLoaded );
+        } );
     var f1 = gui.addFolder( 'Colors' );
     f1.addColor( pbrGui, 'Albedo' )
         .onChange( update );
