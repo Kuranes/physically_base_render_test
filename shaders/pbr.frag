@@ -1,5 +1,9 @@
-#define PI    3.14159265359
-#define INVPI 0.31830988618
+#define PI     3.14159265359
+#define INVPI  0.31830988618
+#define Pi2    6.283185307;
+#define Pi_2   1.570796327;
+#define Pi_4   0.7853981635;
+#define InvPi2 0.159154943;
 
 ////////////  http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
 ////////////  http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
@@ -16,6 +20,11 @@ float saturate(float v)
 vec3 pow_vec3_f(vec3 v, float p)
 {
     return pow(v, vec3(p));
+}
+
+vec3 max_vec3_f(vec3 v, float p)
+{
+    return max(v, vec3(p));
 }
 
 
@@ -107,7 +116,7 @@ float Specular_D(vec3 n, float a, float NdH)
 {
 #if defined(NDF_BLINNPHONG)
     return NormalDistribution_BlinnPhong(a, NdH);
-#elif defined(NDF_BLINNPHONG)
+#elif defined(NDF_BECKMANN)
     return NormalDistribution_Beckmann(a, NdH);
 #elif defined(NDF_GGX)
     return NormalDistribution_GGX(a, NdH);
@@ -326,90 +335,40 @@ vec3 ComputeLight(vec3 albedoColor,vec3 specularColor, vec3 normal, float roughn
     return lightColor * NdL * (cDiff + cSpec);
 }
 
+
 /////////////////////////////////////////////////////////////////////////
-//-------------------------- NORMAL MAP (toksvig, derivatives, aa, etc)-----------
+//-------------------------- FILTER MAP (filmic, blur)---------
 /////////////////////////////////////////////////////////////////////////
-
-// Compute the "Toksvig Factor"
-// http://blog.selfshadow.com/2011/07/22/specular-showdown/
-float Gloss(vec3 bump, float power)
+// Applies the filmic curve from John Hable's presentation
+vec3 ToneMapFilmicALU(vec3 color)
 {
-    float gloss = 1.0;
-    // Compute the "Toksvig Factor"
-    float rlen = 1.0 / saturate(length(bump));
-    gloss = 1.0 / (1.0 + power * (rlen - 1.0));
-    return gloss;
+    color = max_vec3_f(color - 0.004, 0.0);
+    color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7)+ 0.06);
+
+    return pow_vec3_f(color, 2.2);
 }
 
-#ifdef GL_OES_standard_derivativesd
-
-#extension GL_OES_standard_derivatives : enable
-// better, faster, stronger
-// http://www.thetenthplanet.de/archives/1180#more-1180
-mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
+// Determines the color based on exposure settings
+vec3 CalcExposedColor(vec3 color, float avgLuminance, float offset, out float exposure)
 {
-    // get edge vectors of the pixel triangle
-    vec3 dp1 = dFdx( p );
-    vec3 dp2 = dFdy( p );
-    vec2 duv1 = dFdx( uv );
-    vec2 duv2 = dFdy( uv );
-
-    // solve the linear system
-    vec3 dp2perp = cross( dp2, N );
-    vec3 dp1perp = cross( N, dp1 );
-    vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
-    vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
-
-    // construct a scale-invariant frame
-    float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
-    return mat3( T * invmax, B * invmax, N );
+    // Use geometric mean
+    avgLuminance = max(avgLuminance, 0.001);
+    float KeyValue = 0.0;/////////////////////////////////
+    float keyValue = KeyValue;
+    float linearExposure = (KeyValue / avgLuminance);
+    exposure = log2(max(linearExposure, 0.0001));
+    exposure += offset;
+    return exp2(exposure) * color;
 }
 
-
-vec3 perturb_normal( vec3 N, vec3 map, vec3 V, vec2 texcoord )
+// Applies exposure and tone mapping to the specific color, and applies
+// the threshold to the exposure value.
+vec3 ToneMap(vec3 color, float avgLuminance, float threshold, out float exposure)
 {
-    // setup GUI
-    // assume N, the interpolated vertex normal and
-    // V, the view vector (vertex to eye)
-#ifdef WITH_NORMALMAP_UNSIGNED
-    map = map * 255./127. - 128./127.;
-#endif
-#ifdef WITH_NORMALMAP_2CHANNEL
-    map.z = sqrt( 1. - dot( map.xy, map.xy ) );
-#endif
-#ifdef WITH_NORMALMAP_GREEN_UP
-    map.y = -map.y;
-#endif
-    mat3 TBN = cotangent_frame( N, -V, texcoord );
-    return normalize( TBN * map );
+    color = CalcExposedColor(color, avgLuminance, threshold, exposure);
+    color = ToneMapFilmicALU(color);
+    return color;
 }
-
-#else
-
-vec3 perturb_normal( vec3 N, vec3 T,  vec3 map, vec3 V, vec2 texcoord )
-{
-    // setup GUI
-    // assume N, the interpolated vertex normal and
-    // V, the view vector (vertex to eye)
-#ifdef WITH_NORMALMAP_UNSIGNED
-    map = map * 255./127. - 128./127.;
-#endif
-#ifdef WITH_NORMALMAP_2CHANNEL
-    map.z = sqrt( 1. - dot( map.xy, map.xy ) );
-#endif
-#ifdef WITH_NORMALMAP_GREEN_UP
-    map.y = -map.y;
-#endif
-
-    // Transform normal to world-space
-    vec3 wbitangent = cross(N, T);
-    mat3 t2w = mat3(T, wbitangent, N);
-    vec3 n = normalize(t2w*map);
-    return n;
-}
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////
 //--------------------------ENV MAP-------------------------------------
 ////////////////////////////////////////////////////////////////////////
@@ -456,6 +415,169 @@ vec3 decodeRGBE(vec4 rgbe) {
 
 }
 
+//////////////////////
+// ------ Gauss Blur
+//////////////////////
+// Calculates the gaussian blur weight for a given distance and sigmas
+float CalcGaussianWeight(int sampleDist, float sigma)
+{
+    float sigma2Sq = 2.0 * sigma * sigma;
+    float g = 1.0 / sqrt(3.14159 * sigma2Sq);
+    return (g * exp(-(float(sampleDist * sampleDist)) / (sigma2Sq)));
+}
+
+// Performs a gaussian blur in one direction
+vec4 Blur(sampler2D inputTex, vec2 texcoord, vec2 texSize, vec2 texScale, float sigma)
+{
+    vec4 color = vec4(0.0);
+    for (int i = -6; i < 6; i++)
+    {
+        float weight = CalcGaussianWeight(i, sigma);
+        vec2 texCoord = texcoord;
+        texCoord += (vec2(i) / texSize) * texScale;
+        vec4 sample = texture2D(inputTex, texCoord);
+        color += sample * weight;
+    }
+
+    return color;
+}
+
+// Performs a gaussian blur in one direction
+vec3 BlurTextureSphere(sampler2D inputTex, vec2 texcoord, vec2 texSize, float sigma)
+{
+    vec3 color = vec3(0.0);
+    for (int i = -6; i < 6; i++)
+    {
+        float weightI = CalcGaussianWeight(i, sigma);
+        for (int j = -6; j < 6; j++)
+            {
+                vec2 texCoord = texcoord;
+                texCoord += (vec2(i,j) / texSize);
+                vec3 sample = decodeRGBE(textureSphere(inputTex, vec3(texCoord.xy, 0.0)));
+                float weight = CalcGaussianWeight(j, sigma);
+                color += sample * weight * weightI;
+            }
+    }
+    return color;
+}
+
+///////////////////////////////////////////////////////////////
+//-------------------------- NORMAL MAP (derivatives or tangent)---------
+/////////////////////////////////////////////////////////////////////////
+#define WITH_NORMALMAP_UNSIGNED 1
+//#define WITH_NORMALMAP_2CHANNEL 1
+//#define WITH_NORMALMAP_GREEN_UP 1
+vec3 readNormal(sampler2D normalMap, vec2 texcoord){
+    vec3 map = texture2D(normalMap, texcoord).xyz;
+#ifdef WITH_NORMALMAP_UNSIGNED
+    map = map * 255./127. - 128./127.;
+#endif
+#ifdef WITH_NORMALMAP_2CHANNEL
+    map.z = sqrt( 1. - dot( map.xy, map.xy ) );
+#endif
+#ifdef WITH_NORMALMAP_GREEN_UP
+    map.y = -map.y;
+#endif
+    //return map;
+    return normalize(map);
+}
+
+#ifdef GL_OES_standard_derivatives
+#extension GL_OES_standard_derivatives : enable
+#define USE_DERIVATIVES 1
+#endif
+
+#ifdef USE_DERIVATIVES
+// better, faster, stronger and no need of tangents...
+// http://www.thetenthplanet.de/archives/1180#more-1180
+mat3 cotangent_frame( vec3 N, vec3 p, vec2 uv )
+{
+    // get edge vectors of the pixel triangle
+    vec3 dp1 = dFdx( p );
+    vec3 dp2 = dFdy( p );
+    vec2 duv1 = dFdx( uv );
+    vec2 duv2 = dFdy( uv );
+
+    // solve the linear system
+    vec3 dp2perp = cross( dp2, N );
+    vec3 dp1perp = cross( N, dp1 );
+    vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+
+    // construct a scale-invariant frame
+    float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
+    return mat3( T * invmax, B * invmax, N );
+}
+
+vec3 perturb_normal( vec3 N, vec3 bump, vec3 V, vec2 texcoord )
+{
+    mat3 TBN = cotangent_frame( N, -V, texcoord );
+    return normalize( TBN * bump );
+}
+#else
+
+vec3 perturb_normal( vec3 N, vec3 T,  vec3 bump, vec3 V, vec2 texcoord )
+{
+    vec3 wbitangent = cross(N, T);
+    mat3 TBN = mat3(T, wbitangent, N);
+    vec3 n = normalize(t2w * bump);
+    return n;
+}
+
+#endif
+
+/////////////////////////////////////////////////////////////////////////
+//-------------------------- SPECULAR AA---------------------------------
+/////////////////////////////////////////////////////////////////////////
+
+// Compute the "Toksvig Factor"
+// http://blog.selfshadow.com/2011/07/22/specular-showdown/
+float Gloss(vec3 bump, float power)
+{
+    float gloss = 1.0;
+    // Compute the "Toksvig Factor"
+    float rlen = 1.0 / saturate(length(bump));
+    gloss = 1.0 / (1.0 + power * (rlen - 1.0));
+    return gloss;
+}
+// ===============================================================================
+// Computes a new roughness value for a single mipmap texel given a normal map
+// and an existing roughness value
+// Frequency Domain Normal Map Filtering Han et al. [2007a]
+// http://blog.selfshadow.com/publications/s2013-shading-course/rad/s2013_pbs_rad_notes.pdf p20
+// ===============================================================================
+#ifdef MIP_LEVEL_COMPUTE_CONSTANT_WEBGLII
+float ComputeRoughness(vec2 texelPos, int mipLevel, float roughness, sampler2D NormalMap)
+{
+    if( mipLevel == 0 ){
+        return roughness;
+    }
+    else  {
+        vec3 avgNormal = vec3(0.0);
+        // Sample all normal map texels from the base mip level that are within
+        // the footprint of the current mipmap texel
+        int texelFootprint = int(pow(float(mipLevel), 2.0));
+        vec2 topLeft = vec2((-float(texelFootprint) / 2.0) + 0.5);
+        for(int y = 0; y < texelFootprint; ++y) {
+            for(int x = 0; x < texelFootprint; ++x) {
+                vec2 offset = topLeft + vec2(x, y);
+                vec2 samplePos = floor(texelPos + offset) + 0.5;
+                vec3 sampleNormal = texture2D(NormalMap, samplePos).xyz;
+                sampleNormal = normalize(sampleNormal * 2.0 - 1.0);
+                avgNormal += sampleNormal;
+            }
+        }
+        // Fit a vMF lobe to NDF for this mip texel
+        avgNormal /= float(texelFootprint * texelFootprint);
+        float r = length(avgNormal);
+        float kappa = 10000.0;
+        if(r < 1.0)
+            kappa = (3.0 * r - r * r * r) / (1.0 - r * r);
+        // Compute the new roughness value
+        return sqrt(roughness * roughness + (1.0 / kappa));
+    }
+}
+#endif
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- MAIN SHADER PART ---------------------------
 /////////////////////////////////////////////////////////////////////////
@@ -500,7 +622,8 @@ uniform vec4 Specular;
 uniform float Metallic;
 uniform float Roughness;
 
-uniform float LightIntensity;
+ uniform float LightIntensity;
+ uniform float LightAmbientIntensity;
 uniform float Gamma;
 uniform float Exposure;
 uniform vec4 LightColor;
@@ -530,56 +653,58 @@ void main(void)
 
 
 #ifdef METALLIC
-
 #ifdef USE_METALLIC_MAP
     float metallic = texture2D(Texture2, texcoord0).r;
 #else
     float metallic = Metallic;
 #endif
-
-#elif SPECULAR
-    vec3 specularColor = Specular.xyz;
 #endif
 
   vec4 lightPosition = lightPos;
   vec3 lightColor = LightColor.xyz;
   float lightIntensity = LightIntensity;
+  float lightAmbientIntensity = LightAmbientIntensity;
 
     // Compute view direction.
-    vec4 pos = position / position.w;
+  vec4 pos = position;// / position.w;
     vec3 viewDir = normalize(eyePos.xyz - pos.xyz);
     vec3 lightDist = lightPos.xyz - pos.xyz;
     vec3 lightDir = normalize(lightDist);
 
 #ifdef USE_NORMAL_MAP
-    #ifdef GL_OES_standard_derivativesd
-          vec3 normalN = perturb_normal( normal.xyz, texture2D(Texture3, texcoord0.xy).xyz, viewDir, texcoord0.xy );
+    vec3 normalN = readNormal(Texture3, texcoord0.xy);
+
+    #ifdef USE_DERIVATIVES
+          normalN = perturb_normal( normal.xyz, normalN, -viewDir, texcoord0.xy );
     #else
-          vec3 normalN = perturb_normal( normal.xyz, tangent.xyz, texture2D(Texture3, texcoord0.xy).xyz, -viewDir, texcoord0.xy );
+          normalN = perturb_normal( normal.xyz, tangent.xyz, normalN, -viewDir, texcoord0.xy );
     #endif
 
     #ifdef USE_TOKSVIG
           // mipmap normal map
+       #ifdef USE_GLOSSINESS
           roughness = Gloss(normalN, roughness);
+       #else
+          roughness = Gloss(normalN, 1.0 - roughness);
+       #endif
+    #elif defined(USE_MCKAULY)
+          roughness = ComputeRoughness(texcoord0.xy, mipLevel, roughness, Texture3)
     #endif
 
 #else
-    vec3 normalN = normalize(normal.xyz);
+    vec3 normalN = normal.xyz;
 #endif
 
 
 #ifdef METALLIC
     // Lerp with metallic value to find the good diffuse and specular.
     vec3 realAlbedo = albedoColor - albedoColor * metallic;
-
     // 0.03 default specular value for dielectric.
     vec3 realSpecularColor = mix(vec3(0.03), albedoColor, metallic);
-#elif SPECULAR
-
+#else // defined(SPECULAR)
     vec3 realAlbedo = albedoColor;
-    vec3 realSpecularColor = specularColor;
-
-#endif // METALLIC
+    vec3 realSpecularColor = Specular.xyz;;
+#endif
 
     vec3 light1 = ComputeLight( realAlbedo.xyz, realSpecularColor.xyz,  normalN.xyz,  roughness,  lightPos.xyz, lightColor.xyz, lightDir.xyz, viewDir.xyz);
 
@@ -587,20 +712,33 @@ void main(void)
     lightDistLength *= lightDistLength;
     float attenuation =  PI / lightDistLength;
     light1 = attenuation * light1 ;
+    //light1 = light1 ;
 
-#ifdef USE_ENV_MAP
-    vec3 irradiance = decodeRGBE(textureSphere(Texture5, normalN));
-
-    vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
-    //float mipIndex =  roughness * roughness * 8.0f; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
-    vec3 envColor = decodeRGBE(textureSphere(Texture4, reflectVector ));
-    vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
-    vec3 envContrib = envFresnel * envColor;
-#else
     vec3 envContrib = vec3(0.0);
     vec3 irradiance = vec3(0.0);
-#endif
+#ifdef USE_ENV_MAP
 
-    gl_FragColor = vec4(ToSRGB(Exposure + (light1 + realAlbedo*irradiance + envContrib), Gamma), 1.0);
+       float mipIndex =  roughness * roughness * 8.0; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+
+//vec3 blurEnvIrr = BlurTextureSphere(Texture5, normalN.xy, vec2(2048.0, 2048.0), mipIndex);
+vec3 blurEnvIrr = decodeRGBE(textureSphere(Texture5, normalN ));
+        irradiance = blurEnvIrr;
+
+        vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
+
+//vec3 blurEnv = BlurTextureSphere(Texture4, reflectVector.xy, vec2(2048.0, 2048.0), 1.0);
+vec3 blurEnv = decodeRGBE(textureSphere(Texture4, reflectVector ));
+        vec3 envColor = blurEnv;
+
+        vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
+        envContrib = envFresnel * envColor;
+
+#endif
+    vec3 linearColor =  (lightIntensity * light1 + realAlbedo*irradiance*lightAmbientIntensity + envContrib);
+
+//linearColor = irradiance.xyz;
+//linearColor = envColor.xyz;
+
+    gl_FragColor = vec4(ToSRGB(Exposure + linearColor, Gamma), 1.0);
 
 }

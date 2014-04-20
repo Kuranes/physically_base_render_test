@@ -39,6 +39,7 @@ var main = function () {
     var Metallic = osg.Uniform.createFloat( 0.1, 'Metallic' );
     var Roughness = osg.Uniform.createFloat( 0.1, 'Roughness' );
     var lightIntensity = osg.Uniform.createFloat( 0.1, 'LightIntensity' );
+    var lightAmbientIntensity = osg.Uniform.createFloat( 0.05, 'LightAmbientIntensity' );
     var lightColor = osg.Uniform.createFloat4( [ 1.0, 1.0, 1.0, 1.0 ], 'LightColor' );
     var gamma = osg.Uniform.createFloat( 2.2, 'Gamma' );
     var exposure = osg.Uniform.createFloat1( 0.0, 'Exposure' );
@@ -138,6 +139,7 @@ var main = function () {
         myStateSet.addUniform( Specular );
         myStateSet.addUniform( Roughness );
         myStateSet.addUniform( lightIntensity );
+        myStateSet.addUniform( lightAmbientIntensity );
         myStateSet.addUniform( lightColor );
         myStateSet.addUniform( gamma );
         myStateSet.addUniform( exposure );
@@ -151,6 +153,7 @@ var main = function () {
         this.Roughness = 0.7;
         this.Dielectric = 0.6;
         this.lightIntensity = 1.0;
+        this.lightAmbientIntensity = 0.01;
         this.gamma = 2.2;
         this.exposure = 0.0
         this.lightColor = [ 255.0, 255.0, 255.0, 1.0 ];
@@ -194,6 +197,7 @@ var main = function () {
         Roughness.set( pbrGui.Roughness );
 
         lightIntensity.set( pbrGui.lightIntensity );
+        lightAmbientIntensity.set( pbrGui.lightAmbientIntensity );
 
         gamma.set( pbrGui.gamma );
         exposure.set( pbrGui.exposure );
@@ -252,7 +256,7 @@ var main = function () {
 
         var vertexshader = currentDefine + vertShader;
 
-        currentDefine += '#define WITH_NORMALMAP_UNSIGNED 1\n';
+        //currentDefine += '#define WITH_NORMALMAP_UNSIGNED 1\n';
         currentDefine += '#define ' + pbrGui.metallicSpecularDefine + ' 1\n';
         currentDefine += '#define NDF_' + pbrGui.normalDistributionDefine + ' 1\n';
         currentDefine += '#define FRESNEL_' + pbrGui.fresnelDefine + ' 1\n';
@@ -373,7 +377,10 @@ var main = function () {
 
     f3.addColor( pbrGui, 'lightColor' )
         .onChange( update );
-    f3.add( pbrGui, 'lightIntensity', 0.0, 5.0 )
+    f3.add( pbrGui, 'lightIntensity', 0.0, 10.0 )
+        .step( 0.1 )
+        .onChange( update );
+    f3.add( pbrGui, 'lightAmbientIntensity', 0.0, 1.0 )
         .step( 0.1 )
         .onChange( update );
     f3.add( pbrGui, 'gamma', 0.0, 5.0 )
