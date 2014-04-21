@@ -27,6 +27,11 @@ vec3 max_vec3_f(vec3 v, float p)
     return max(v, vec3(p));
 }
 
+float rcp(float x)
+{
+    return 1.0 / x;
+}
+
 
 ////////////////////////////////////////////////////////////////////////
 // -------------------------- LinearSpace ------------------------------
@@ -253,7 +258,7 @@ vec3 Fresnel_CookTorrance(vec3 specularColor, vec3 h, vec3 v)
 {
     vec3 sqrtSpec = sqrt(specularColor);
     vec3 n = (1.0 + sqrtSpec) / (1.0 - sqrtSpec);
-    float c = max(dot(v, h), 0.0);
+    float c = saturate(dot(v, h));
     vec3 g = sqrt(n * n + c * c - 1.0);
 
     vec3 part1 = (g - c)/(g + c);
@@ -281,7 +286,7 @@ vec3 Specular_F_Roughness(vec3 specularColor, float alpha, vec3 h, vec3 v)
 {
 #if defined(FRESNEL_SCHLICK)
     // Sclick using roughness to attenuate fresnel.
-    return (specularColor + (max(vec3(1.0-alpha), specularColor) - specularColor) * pow(1.0 - max(dot(v, h),0.0), 5.0));
+    return (specularColor + (max(vec3(1.0-alpha), specularColor) - specularColor) * pow(1.0 - saturate(dot(v, h)), 5.0));
 #elif defined(FRESNEL_COOKTORRANCE)
     return Fresnel_CookTorrance(specularColor, h, v);
 #else //FRESNEL_NONE
@@ -308,20 +313,25 @@ vec3 ComputeDiffuseEnergyConservation(vec3 specularColor, vec3 fresnelSpec)
 }
 
 /////////////////////////////////////////////////////////////////////////
-//-------------------------- LIGHT EQUATION -----------------------------
+//-------------------------- LIGHT EQUATION EDUCATIONNAL-----------------
 /////////////////////////////////////////////////////////////////////////
 
 
+vec3  ComputeLightDiffuse(vec3 albedoColor,vec3 specularColor, vec3 cSpec)
+{
+    return albedoColor * ComputeDiffuseEnergyConservation (specularColor, cSpec);
+
+}
 vec3 ComputeLight(vec3 albedoColor,vec3 specularColor, vec3 normal, float roughness, vec3 lightPosition, vec3 lightColor, vec3 lightDir, vec3 viewDir)
 {
     // Compute some useful values.
-    float NdL = max(dot(normal, lightDir), 0.0);
-    float NdV = max(dot(normal, viewDir), 0.0);
+    float NdL = saturate(dot(normal, lightDir));
+    float NdV = saturate(dot(normal, viewDir));
     vec3 h = normalize(lightDir + viewDir);
-    float NdH = max(dot(normal, h), 0.0);
-    float VdH = max(dot(viewDir, h), 0.0);
-    float HdL = max(dot(h, lightDir), 0.0);
-    float LdV = max(dot(lightDir, viewDir), 0.0);
+    float NdH = saturate(dot(normal, h));
+    float VdH = saturate(dot(viewDir, h));
+    float HdL = saturate(dot(h, lightDir));
+    float LdV = saturate(dot(lightDir, viewDir));
     float a = max(0.0001, roughness * roughness);
 
     float spec = Specular_D(normal, a, NdH);
@@ -330,11 +340,188 @@ vec3 ComputeLight(vec3 albedoColor,vec3 specularColor, vec3 normal, float roughn
     vec3 fresnelSpec = Specular_F(specularColor, viewDir, h);
 
     vec3 cSpec = spec * fresnelSpec;
-    vec3 cDiff = albedoColor * ComputeDiffuseEnergyConservation (specularColor, cSpec);
+    vec3 cDiff = ComputeLightDiffuse(albedoColor, specularColor, cSpec);
 
     return lightColor * NdL * (cDiff + cSpec);
+    //return  lightColor * (cDiff + cSpec);
 }
 
+
+/////////////////////////////////////////////////////////////////////////
+//-------------------------- LIGHT EQUATION TOP OF THE POP---------------
+//AUTHOR: John Hable
+// http://www.filmicworlds.com/2014/04/21/optimizing-ggx-shaders-with-dotlh/
+/////////////////////////////////////////////////////////////////////////
+
+float G1V(float dotNV, float k)
+{
+   return 1.0/(dotNV*(1.0-k)+k);
+}
+
+float LightingFuncGGX_REF(vec3 N, vec3 V, vec3 L, float roughness, float F0)
+{
+        float alpha = roughness*roughness;
+
+        vec3 H = normalize(V+L);
+
+        float dotNL = saturate(dot(N,L));
+        float dotNV = saturate(dot(N,V));
+        float dotNH = saturate(dot(N,H));
+        float dotLH = saturate(dot(L,H));
+
+        float F, D, vis;
+
+        // D
+        float alphaSqr = alpha*alpha;
+        float denom = dotNH * dotNH *(alphaSqr-1.0) + 1.0;
+        D = alphaSqr/(PI * denom * denom);
+
+        // F
+        float dotLH5 = pow(1.0-dotLH,5.0);
+        F = F0 + (1.0-F0)*(dotLH5);
+
+        // V
+        float k = alpha/2.0;
+        vis = G1V(dotNL,k)*G1V(dotNV,k);
+
+        float specular = dotNL * D * F * vis;
+        return specular;
+}
+
+float LightingFuncGGX_OPT1(vec3 N, vec3 V, vec3 L, float roughness, float F0)
+{
+        float alpha = roughness*roughness;
+
+        vec3 H = normalize(V+L);
+
+        float dotNL = saturate(dot(N,L));
+        float dotLH = saturate(dot(L,H));
+        float dotNH = saturate(dot(N,H));
+
+        float F, D, vis;
+
+        // D
+        float alphaSqr = alpha*alpha;
+        float pi = 3.14159;
+        float denom = dotNH * dotNH *(alphaSqr-1.0) + 1.0;
+        D = alphaSqr/(pi * denom * denom);
+
+        // F
+        float dotLH5 = pow(1.0-dotLH,5.0);
+        F = F0 + (1.0-F0)*(dotLH5);
+
+        // V
+        float k = alpha/2.0;
+        vis = G1V(dotLH,k)*G1V(dotLH,k);
+
+        float specular = dotNL * D * F * vis;
+        return specular;
+}
+
+
+float LightingFuncGGX_OPT2(vec3 N, vec3 V, vec3 L, float roughness, float F0)
+{
+        float alpha = roughness*roughness;
+
+        vec3 H = normalize(V+L);
+
+        float dotNL = saturate(dot(N,L));
+
+        float dotLH = saturate(dot(L,H));
+        float dotNH = saturate(dot(N,H));
+
+        float F, D, vis;
+
+        // D
+        float alphaSqr = alpha*alpha;
+        float pi = 3.14159;
+        float denom = dotNH * dotNH *(alphaSqr-1.0) + 1.0;
+        D = alphaSqr/(pi * denom * denom);
+
+        // F
+        float dotLH5 = pow(1.0-dotLH,5.0);
+        F = F0 + (1.0-F0)*(dotLH5);
+
+        // V
+        float k = alpha/2.0;
+        float k2 = k*k;
+        float invK2 = 1.0-k2;
+        vis = rcp(dotLH*dotLH*invK2 + k2);
+
+        float specular = dotNL * D * F * vis;
+        return specular;
+}
+
+vec2 LightingFuncGGX_FV(float dotLH, float roughness)
+{
+        float alpha = roughness*roughness;
+
+        // F
+        float F_a, F_b;
+        float dotLH5 = pow(1.0-dotLH,5.0);
+        F_a = 1.0;
+        F_b = dotLH5;
+
+        // V
+        float vis;
+        float k = alpha/2.0;
+        float k2 = k*k;
+        float invK2 = 1.0-k2;
+        vis = rcp(dotLH*dotLH*invK2 + k2);
+
+        return vec2(F_a*vis,F_b*vis);
+}
+
+float LightingFuncGGX_D(float dotNH, float roughness)
+{
+        float alpha = roughness*roughness;
+        float alphaSqr = alpha*alpha;
+        float denom = dotNH * dotNH *(alphaSqr-1.0) + 1.0;
+
+        float D = alphaSqr/(PI * denom * denom);
+        return D;
+}
+
+float LightingFuncGGX_OPT3(vec3 N, vec3 V, vec3 L, float roughness, float F0)
+{
+        vec3 H = normalize(V+L);
+
+        float dotNL = saturate(dot(N,L));
+        float dotLH = saturate(dot(L,H));
+        float dotNH = saturate(dot(N,H));
+
+        float D = LightingFuncGGX_D(dotNH,roughness);
+        vec2 FV_helper = LightingFuncGGX_FV(dotLH,roughness);
+        float FV = F0*FV_helper.x + (1.0-F0)*FV_helper.y;
+        float specular = dotNL * D * FV;
+
+        return specular;
+}
+
+#ifdef _LOOKUP
+float Pow4(float x)
+{
+        return x*x*x*x;
+}
+
+float LightingFuncGGX_OPT4(vec3 N, vec3 V, vec3 L, float roughness, float F0)
+{
+        vec3 H = normalize(V+L);
+
+        float dotNL = saturate(dot(N,L));
+        float dotLH = saturate(dot(L,H));
+        float dotNH = saturate(dot(N,H));
+
+        float D = g_txGgxDFV.Sample(g_samLinearClamp,vec2(Pow4(dotNH),roughness)).x;
+        vec2 FV_helper =
+                g_txGgxDFV.Sample(g_samLinearClamp,vec2(dotLH,roughness)).yz;
+
+        float FV = F0*FV_helper.x + (1.0f-F0)*FV_helper.y;
+        float specular = dotNL * D * FV;
+
+        return specular;
+}
+#endif
 
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- FILTER MAP (filmic, blur)---------
@@ -442,23 +629,135 @@ vec4 Blur(sampler2D inputTex, vec2 texcoord, vec2 texSize, vec2 texScale, float 
     return color;
 }
 
-// Performs a gaussian blur in one direction
-vec3 BlurTextureSphere(sampler2D inputTex, vec2 texcoord, vec2 texSize, float sigma)
+float FilterBox(float x)
 {
-    vec3 color = vec3(0.0);
-    for (int i = -6; i < 6; i++)
+    return 1.0;
+}
+
+float FilterTriangle(float x)
+{
+    return saturate(1.0 - x);
+}
+
+float FilterGaussian(float x, float sigma)
+{
+    float sigma2Sq = 2.0 * sigma * sigma;
+    float g = 1.0 / sqrt(sigma2Sq);
+    return (g * exp(-(x * x) / (sigma2Sq)));
+}
+
+ float FilterCubic(float x, float B, float C)
+{
+    // Rescale from [-2, 2] range to [-FilterWidth, FilterWidth]
+    x *= 2.0;
+
+    float y = 0.0;
+    float x2 = x * x;
+    float x3 = x * x * x;
+    if(x < 1.0)
+        y = (12.0 - 9.0 * B - 6.0 * C) * x3 + (-18.0 + 12.0 * B + 6.0 * C) * x2 + (6.0 - 2.0 * B);
+    else if (x <= 2.0)
+        y = (-B - 6.0 * C) * x3 + (6.0 * B + 30.0 * C) * x2 + (-12.0 * B - 48.0 * C) * x + (8.0 * B + 24.0 * C);
+
+    return y / 6.0;
+}
+
+float FilterSinc(float x, float FilterSize)
+{
+    float s;
+
+    x *= FilterSize;
+
+    if(x < 0.001)
+        s = 1.0;
+    else
+        s = sin(x * PI) / (x * PI);
+
+    return s;
+}
+
+float FilterBlackmanHarris(float x)
+{
+    x = 1.0 - x;
+
+    const float a0 = 0.35875;
+    const float a1 = 0.48829;
+    const float a2 = 0.14128;
+    const float a3 = 0.01168;
+    return saturate(a0 - a1 * cos(PI * x) + a2 * cos(2.0 * PI * x) - a3 * cos(3.0 * PI * x));
+}
+
+float FilterSmoothstep(float x)
+{
+    return 1.0 - smoothstep(0.0, 1.0, x);
+}
+
+#define FilterType_ 0
+
+float Filter(float x, float FilterParam)
+{
+    //return FilterGaussian(x, FilterParam);
+
+    #if FilterType_ == 0
+        return FilterBox(x);
+    #elif FilterType_ == 1
+        return FilterTriangle(x);
+    #elif FilterType_ == 2
+        return FilterGaussian(x, FilterParam);
+    #elif FilterType_ == 3
+        return FilterBlackmanHarris(x);
+    #elif FilterType_ == 4
+        return FilterSmoothstep(x);
+    #elif FilterType_ == 5
+        return FilterCubic(x, 1.0, 0.0);
+    #elif FilterType_ == 6
+        return FilterCubic(x, 0.0, 0.5);
+    #elif FilterType_ == 7
+        return FilterCubic(x, 1.0 / 3.0, 1.0 / 3.0);
+    #elif FilterType_ == 8
+        return FilterCubic(x, CubicB, CubicC);
+    #elif FilterType_ == 9
+        float FilterSize = 1.0f;
+        return FilterSinc(x, FilterSize);
+    #endif
+}
+
+// Performs a gaussian blur in one direction
+vec3 BlurTextureSphere(sampler2D inputTex, vec3 texcoord, vec2 texSize, float FilterSize)
+{
+
+    vec2 vN;
+    vN.y = -texcoord.y;
+    vN.x = atan( texcoord.z,  texcoord.x ) * INVPI;
+    vN = vN * vec2(0.5) + vec2(0.5);
+    vec2 pixelPos = vN;
+
+#define SAMPLE_RADIUS 3
+
+    vec3 sampleClear = decodeRGBE(texture2D(inputTex, pixelPos));
+    vec3 sum = vec3(0.0);
+    float totalWeight = 0.0;
+
+    for(int y = -SAMPLE_RADIUS; y <= SAMPLE_RADIUS; ++y)
     {
-        float weightI = CalcGaussianWeight(i, sigma);
-        for (int j = -6; j < 6; j++)
-            {
-                vec2 texCoord = texcoord;
-                texCoord += (vec2(i,j) / texSize);
-                vec3 sample = decodeRGBE(textureSphere(inputTex, vec3(texCoord.xy, 0.0)));
-                float weight = CalcGaussianWeight(j, sigma);
-                color += sample * weight * weightI;
+        for(int x = -SAMPLE_RADIUS; x <= SAMPLE_RADIUS; ++x)
+        {
+            vec2 sampleOffset = vec2(x, y) / texSize;
+            vec2 samplePos = pixelPos + sampleOffset;
+            float sampleDist = length(sampleOffset);
+            if ( sampleDist != 0.0 ) {
+                vec2 samplePos = pixelPos + sampleOffset;
+                vec3 sample = decodeRGBE(texture2D(inputTex, samplePos));
+                float weight = Filter(sampleDist, FilterSize*64.0);
+                sum += sample * weight;
+                totalWeight += weight;
             }
+        }
     }
-    return color;
+
+    sum = sum / max(totalWeight, 0.00001);
+    sum = max(sum, vec3(0.0));
+    return mix(sampleClear, sum, FilterSize );
 }
 
 ///////////////////////////////////////////////////////////////
@@ -478,8 +777,8 @@ vec3 readNormal(sampler2D normalMap, vec2 texcoord){
 #ifdef WITH_NORMALMAP_GREEN_UP
     map.y = -map.y;
 #endif
-    //return map;
-    return normalize(map);
+    return map;
+    //return normalize(map);
 }
 
 #ifdef GL_OES_standard_derivatives
@@ -706,35 +1005,62 @@ void main(void)
     vec3 realSpecularColor = Specular.xyz;;
 #endif
 
-    vec3 light1 = ComputeLight( realAlbedo.xyz, realSpecularColor.xyz,  normalN.xyz,  roughness,  lightPos.xyz, lightColor.xyz, lightDir.xyz, viewDir.xyz);
+
+
+   vec3 light1;
+
+#ifdef EQUATION_OPT
+
+    light1 = ComputeLight( realAlbedo.xyz, realSpecularColor.xyz,  normalN.xyz,  roughness,  lightPos.xyz, lightColor.xyz, lightDir.xyz, viewDir.xyz);
+
+#else
+
+    float cSpec;
+
+#ifdef GGX_REF
+    cSpec = LightingFuncGGX_REF(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#elif defined(GGX_1)
+    cSpec = LightingFuncGGX_OPT1(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#elif defined(GGX_2)
+    cSpec = LightingFuncGGX_OPT2(mormalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#else //defined(GGX_3)
+    cSpec = LightingFuncGGX_OPT3(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#endif
+
+vec3 cDiff = ComputeLightDiffuse(realAlbedo.xyz, realSpecularColor.xyz, vec3(cSpec));
+float dotNL = saturate(dot(normalN.xyz,lightDir.xyz));
+light1 = lightColor *  (dotNL *cDiff + cSpec*realSpecularColor);
+
+#endif
+
 
     float lightDistLength = length(lightDist);
-    lightDistLength *= lightDistLength;
+//lightDistLength *= lightDistLength;
     float attenuation =  PI / lightDistLength;
-    light1 = attenuation * light1 ;
-    //light1 = light1 ;
+    light1 = lightIntensity *attenuation * light1 ;
 
     vec3 envContrib = vec3(0.0);
     vec3 irradiance = vec3(0.0);
 #ifdef USE_ENV_MAP
 
-       float mipIndex =  roughness * roughness * 8.0; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+//float mipIndex =  roughness * roughness * 8; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+float mipIndex =  roughness * roughness ; //instead we blur 9 tap and use roughness as a "blur" lerp index
 
-//vec3 blurEnvIrr = BlurTextureSphere(Texture5, normalN.xy, vec2(2048.0, 2048.0), mipIndex);
-vec3 blurEnvIrr = decodeRGBE(textureSphere(Texture5, normalN ));
-        irradiance = blurEnvIrr;
+irradiance = BlurTextureSphere(Texture5, normalN, vec2(360.0, 180.0), mipIndex);
+//irradiance = decodeRGBE(textureSphere(Texture5, normalN ));
 
-        vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
+       vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
 
-//vec3 blurEnv = BlurTextureSphere(Texture4, reflectVector.xy, vec2(2048.0, 2048.0), 1.0);
-vec3 blurEnv = decodeRGBE(textureSphere(Texture4, reflectVector ));
-        vec3 envColor = blurEnv;
+vec3 envColor = BlurTextureSphere(Texture4, reflectVector, vec2(2048.0, 1024.0), mipIndex);
+//vec3 envColor = decodeRGBE(textureSphere(Texture4, reflectVector ));
 
         vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
         envContrib = envFresnel * envColor;
 
 #endif
-    vec3 linearColor =  (lightIntensity * light1 + realAlbedo*irradiance*lightAmbientIntensity + envContrib);
+vec3 linearColor;
+
+linearColor =  (light1 + realAlbedo*irradiance*lightAmbientIntensity + envContrib*lightAmbientIntensity);
 
 //linearColor = irradiance.xyz;
 //linearColor = envColor.xyz;
