@@ -312,16 +312,16 @@ vec3 ComputeDiffuseEnergyConservation(vec3 specularColor, vec3 fresnelSpec)
 #endif
 }
 
-/////////////////////////////////////////////////////////////////////////
-//-------------------------- LIGHT EQUATION EDUCATIONNAL-----------------
-/////////////////////////////////////////////////////////////////////////
-
-
 vec3  ComputeLightDiffuse(vec3 albedoColor,vec3 specularColor, vec3 cSpec)
 {
     return albedoColor * ComputeDiffuseEnergyConservation (specularColor, cSpec);
 
 }
+/////////////////////////////////////////////////////////////////////////
+//-------------------------- LIGHT EQUATION EDUCATIONNAL-----------------
+/////////////////////////////////////////////////////////////////////////
+
+
 vec3 ComputeLight(vec3 albedoColor,vec3 specularColor, vec3 normal, float roughness, vec3 lightPosition, vec3 lightColor, vec3 lightDir, vec3 viewDir)
 {
     // Compute some useful values.
@@ -349,6 +349,9 @@ vec3 ComputeLight(vec3 albedoColor,vec3 specularColor, vec3 normal, float roughn
 
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- LIGHT EQUATION TOP OF THE POP---------------
+/////////////////////////////////////////////////////////////////////////
+
+
 //AUTHOR: John Hable
 // http://www.filmicworlds.com/2014/04/21/optimizing-ggx-shaders-with-dotlh/
 /////////////////////////////////////////////////////////////////////////
@@ -393,7 +396,6 @@ float LightingFuncGGX_OPT1(vec3 N, vec3 V, vec3 L, float roughness, float F0)
         float alpha = roughness*roughness;
 
         vec3 H = normalize(V+L);
-
         float dotNL = saturate(dot(N,L));
         float dotLH = saturate(dot(L,H));
         float dotNH = saturate(dot(N,H));
@@ -402,9 +404,8 @@ float LightingFuncGGX_OPT1(vec3 N, vec3 V, vec3 L, float roughness, float F0)
 
         // D
         float alphaSqr = alpha*alpha;
-        float pi = 3.14159;
-        float denom = dotNH * dotNH *(alphaSqr-1.0) + 1.0;
-        D = alphaSqr/(pi * denom * denom);
+        float denom = dotNH * dotNH * (alphaSqr-1.0) + 1.0;
+        D = alphaSqr / (PI * denom * denom);
 
         // F
         float dotLH5 = pow(1.0-dotLH,5.0);
@@ -424,29 +425,26 @@ float LightingFuncGGX_OPT2(vec3 N, vec3 V, vec3 L, float roughness, float F0)
         float alpha = roughness*roughness;
 
         vec3 H = normalize(V+L);
-
         float dotNL = saturate(dot(N,L));
-
         float dotLH = saturate(dot(L,H));
         float dotNH = saturate(dot(N,H));
 
         float F, D, vis;
 
         // D
-        float alphaSqr = alpha*alpha;
-        float pi = 3.14159;
-        float denom = dotNH * dotNH *(alphaSqr-1.0) + 1.0;
-        D = alphaSqr/(pi * denom * denom);
+        float alphaSqr = alpha * alpha;
+        float denom = dotNH * dotNH * (alphaSqr-1.0) + 1.0;
+        D = alphaSqr / (PI * denom * denom);
 
         // F
-        float dotLH5 = pow(1.0-dotLH,5.0);
-        F = F0 + (1.0-F0)*(dotLH5);
+        float dotLH5 = pow(1.0 - dotLH, 5.0);
+        F = F0 + (1.0 - F0)*(dotLH5);
 
         // V
-        float k = alpha/2.0;
-        float k2 = k*k;
-        float invK2 = 1.0-k2;
-        vis = rcp(dotLH*dotLH*invK2 + k2);
+        float k = alpha / 2.0;
+        float k2 = k * k;
+        float invK2 = 1.0 - k2;
+        vis = rcp( dotLH * dotLH * invK2 + k2);
 
         float specular = dotNL * D * F * vis;
         return specular;
@@ -467,7 +465,7 @@ vec2 LightingFuncGGX_FV(float dotLH, float roughness)
         float k = alpha/2.0;
         float k2 = k*k;
         float invK2 = 1.0-k2;
-        vis = rcp(dotLH*dotLH*invK2 + k2);
+        vis = rcp( dotLH * dotLH * invK2 + k2);
 
         return vec2(F_a*vis,F_b*vis);
 }
@@ -485,7 +483,6 @@ float LightingFuncGGX_D(float dotNH, float roughness)
 float LightingFuncGGX_OPT3(vec3 N, vec3 V, vec3 L, float roughness, float F0)
 {
         vec3 H = normalize(V+L);
-
         float dotNL = saturate(dot(N,L));
         float dotLH = saturate(dot(L,H));
         float dotNH = saturate(dot(N,H));
@@ -523,9 +520,51 @@ float LightingFuncGGX_OPT4(vec3 N, vec3 V, vec3 L, float roughness, float F0)
 }
 #endif
 
+
+// AUTHOR: GLTracy
+// https://www.shadertoy.com/view/lsXSz7
+/////////////////////////////////////////////////////////////////////////
+float LightingCookTorrance(vec3 n, vec3 v, vec3 l, float m, float F0)
+{
+    // half vector
+    vec3 h = normalize( l + v );
+
+    // dot
+    float dot_n_h = max( dot( n, h ), 0.0 );
+    float dot_n_v = max( dot( n, v ), 0.0 );
+    float dot_n_l = max( dot( n, l ), 0.0 );
+    float dot_h   = max( dot( h, v ), 0.0 );
+
+    // Geometric Term
+    //          2 * ( N dot H )( N dot L )    2 * ( N dot H )( N dot V )
+    // min( 1, ----------------------------, ---------------------------- )
+    //                 ( H dot V )                   ( H dot V )
+    float g = 2.0 * dot_n_h / dot_h;
+    float G = min( min( dot_n_v, dot_n_l ) * g, 1.0 );
+
+    // Normal Distribution Function ( cancel 1 / pi )
+    //         ( N dot H )^2 - 1
+    //  exp( ----------------------- )
+    //         ( N dot H )^2 * m^2
+    // --------------------------------
+    //         ( N dot H )^4 * m^2
+    float sq_nh   = dot_n_h * dot_n_h;
+    float sq_nh_m = sq_nh * ( m * m );
+    float D = exp( ( sq_nh - 1.0 ) / sq_nh_m ) / ( sq_nh * sq_nh_m );
+
+    // Frensnel Equation
+    // F0 + ( 1 - F0 ) * ( 1 - ( H dot V ) )^5
+    float F = F0 + ( 1.0  - F0 ) * pow( 1.0 - dot_h, 5.0 );
+
+    // CookTorrance BRDF
+    float brdf_spec = D * F * G / ( dot_n_v * dot_n_l * 4.0 );
+
+    return brdf_spec;
+}
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- FILTER MAP (filmic, blur)---------
 /////////////////////////////////////////////////////////////////////////
+// AUTHOR: John Hable
 // Applies the filmic curve from John Hable's presentation
 vec3 ToneMapFilmicALU(vec3 color)
 {
@@ -550,6 +589,7 @@ vec3 CalcExposedColor(vec3 color, float avgLuminance, float offset, out float ex
 
 // Applies exposure and tone mapping to the specific color, and applies
 // the threshold to the exposure value.
+// beware before/after hdr resolve aa
 vec3 ToneMap(vec3 color, float avgLuminance, float threshold, out float exposure)
 {
     color = CalcExposedColor(color, avgLuminance, threshold, exposure);
@@ -578,27 +618,21 @@ vec3 decodeRGBE(vec4 rgbe) {
 }
 
 // fetch from environment sphere texture
- vec4 textureSphere(sampler2D tex, vec3 r) {
+ vec2 textureSphereCoordinates(vec3 r) {
 
+    vec2 vN;
  #define OPT_SPHERE_SAMPLE_GET 1
 #ifdef OPT_SPHERE_SAMPLE_GET
-    /*vec2 vN;
-     vN.y = -r.y;
-     float m = PI * 0.8  * sqrt((r.x) * (r.x) + (r.y) * (r.y) + (r.z ) * (r.z ));
-      vN.x = r.z / m ;
-      vN = vN * vec2(0.5) + vec2(0.5);
-      return texture2D(tex, vN);*/
-    vec2 vN;
     vN.y = -r.y;
     vN.x = atan( r.z,  r.x ) * INVPI;
     vN = vN * vec2(0.5) + vec2(0.5);
-    return texture2D(tex, vN);
+    return vN;
 #else
     float yaw = acos(r.y) / PI;
     float pitch = (atan(r.x, r.z) + PI) / (2.0 * PI);
-    vec2 vN = vec2(pitch, yaw);
-    return texture2D(tex, vN);
+    vN = vec2(pitch, yaw);
 #endif
+    return vN;
 
 }
 
@@ -722,22 +756,16 @@ float Filter(float x, float FilterParam)
     #endif
 }
 
-// Performs a gaussian blur in one direction
+// Performs a gaussian blur in two direction
 vec3 BlurTextureSphere(sampler2D inputTex, vec3 texcoord, vec2 texSize, float FilterSize)
 {
 
-    vec2 vN;
-    vN.y = -texcoord.y;
-    vN.x = atan( texcoord.z,  texcoord.x ) * INVPI;
-    vN = vN * vec2(0.5) + vec2(0.5);
-    vec2 pixelPos = vN;
-
-#define SAMPLE_RADIUS 3
-
-    vec3 sampleClear = decodeRGBE(texture2D(inputTex, pixelPos));
+    vec2 pixelPos =  textureSphereCoordinates(texcoord);
+    vec3 sampleToBlur = decodeRGBE(texture2D(inputTex, pixelPos));
     vec3 sum = vec3(0.0);
     float totalWeight = 0.0;
 
+#define SAMPLE_RADIUS 3
     for(int y = -SAMPLE_RADIUS; y <= SAMPLE_RADIUS; ++y)
     {
         for(int x = -SAMPLE_RADIUS; x <= SAMPLE_RADIUS; ++x)
@@ -747,9 +775,9 @@ vec3 BlurTextureSphere(sampler2D inputTex, vec3 texcoord, vec2 texSize, float Fi
             float sampleDist = length(sampleOffset);
             if ( sampleDist != 0.0 ) {
                 vec2 samplePos = pixelPos + sampleOffset;
-                vec3 sample = decodeRGBE(texture2D(inputTex, samplePos));
+                vec3 sampleKerneled = decodeRGBE(texture2D(inputTex, samplePos));
                 float weight = Filter(sampleDist, FilterSize*64.0);
-                sum += sample * weight;
+                sum += sampleKerneled * weight;
                 totalWeight += weight;
             }
         }
@@ -757,9 +785,19 @@ vec3 BlurTextureSphere(sampler2D inputTex, vec3 texcoord, vec2 texSize, float Fi
 
     sum = sum / max(totalWeight, 0.00001);
     sum = max(sum, vec3(0.0));
-    return mix(sampleClear, sum, FilterSize );
+    sampleToBlur = mix(sampleToBlur, sum, FilterSize );
+
+    return sampleToBlur;
 }
 
+// Performs a gaussian blur in two direction
+vec3 FakeBlurTextureSphere(sampler2D inputTex, sampler2D BlurTex, vec2 pixelPos,  float FilterSize)
+{
+    vec3 sampleToBlur = decodeRGBE(texture2D(inputTex, pixelPos));
+    vec3 sampleBlurred = decodeRGBE(texture2D(BlurTex, pixelPos));
+    sampleToBlur = mix(sampleToBlur, sampleBlurred, FilterSize );
+    return sampleToBlur;
+}
 ///////////////////////////////////////////////////////////////
 //-------------------------- NORMAL MAP (derivatives or tangent)---------
 /////////////////////////////////////////////////////////////////////////
@@ -904,6 +942,7 @@ uniform sampler2D Texture3;
 #ifdef USE_ENV_MAP
 uniform sampler2D Texture4;
 uniform sampler2D Texture5;
+uniform sampler2D Texture6;
 #endif
 
 
@@ -1009,51 +1048,59 @@ void main(void)
 
    vec3 light1;
 
-#ifdef EQUATION_OPT
-
+#ifdef EQUATION_EDIT_MODE
     light1 = ComputeLight( realAlbedo.xyz, realSpecularColor.xyz,  normalN.xyz,  roughness,  lightPos.xyz, lightColor.xyz, lightDir.xyz, viewDir.xyz);
 
 #else
 
     float cSpec;
 
-#ifdef GGX_REF
+#ifdef EQUATION_GGX_REF
     cSpec = LightingFuncGGX_REF(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
-#elif defined(GGX_1)
+#elif defined(EQUATION_GGX_1)
     cSpec = LightingFuncGGX_OPT1(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
-#elif defined(GGX_2)
-    cSpec = LightingFuncGGX_OPT2(mormalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
-#else //defined(GGX_3)
+#elif defined(EQUATION_GGX_2)
+    cSpec = LightingFuncGGX_OPT2(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#elif defined(EQUATION_GGX_3)
     cSpec = LightingFuncGGX_OPT3(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#elif defined(EQUATION_COOK_TORRANCE)
+    cSpec = LightingCookTorrance(normalN.xyz, viewDir.xyz, lightDir.xyz, roughness, metallic);
+#else
+    vec3 h = normalize(viewDir.xyz + lightDir.xyz);
+    float nh = dot(normalN.xyz, h);
+    float nv = max(dot(normalN.xyz, viewDir.xyz), 0.0);
+    float i = pow(nh, metallic);
+    cSpec = i/(0.1+nv);
 #endif
 
-vec3 cDiff = ComputeLightDiffuse(realAlbedo.xyz, realSpecularColor.xyz, vec3(cSpec));
-float dotNL = saturate(dot(normalN.xyz,lightDir.xyz));
-light1 = lightColor *  (dotNL *cDiff + cSpec*realSpecularColor);
+    vec3 cDiff = ComputeLightDiffuse(realAlbedo.xyz, realSpecularColor.xyz, vec3(cSpec));
+    float dotNL = saturate(dot(normalN.xyz, lightDir.xyz));
+    light1 = lightColor *  dotNL * (cDiff + cSpec*realSpecularColor);
 
 #endif
 
 
     float lightDistLength = length(lightDist);
-//lightDistLength *= lightDistLength;
+lightDistLength *= lightDistLength;
     float attenuation =  PI / lightDistLength;
     light1 = lightIntensity *attenuation * light1 ;
 
     vec3 envContrib = vec3(0.0);
     vec3 irradiance = vec3(0.0);
+
 #ifdef USE_ENV_MAP
 
-//float mipIndex =  roughness * roughness * 8; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
-float mipIndex =  roughness * roughness ; //instead we blur 9 tap and use roughness as a "blur" lerp index
+      //float mipIndex =  roughness * roughness * 8; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+      float mipIndex =  roughness * roughness ; //instead we blur 9 tap and use roughness as a "blur" lerp index
+      //float mipIndex =  roughness ; //instead we blur 9 tap and use roughness as a "blur" lerp index
+      // should really either use SAT or blur once the env/irr map client side and mix/lerp/smoothstep with non blurred-texfecch
 
-irradiance = BlurTextureSphere(Texture5, normalN, vec2(360.0, 180.0), mipIndex);
-//irradiance = decodeRGBE(textureSphere(Texture5, normalN ));
+      irradiance = decodeRGBE(texture2D(Texture5, textureSphereCoordinates(normalN)));
+      //irradiance =   BlurTextureSphere(Texture5, normalN, vec2(512.0, 256.0), mipIndex);
 
        vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
-
-vec3 envColor = BlurTextureSphere(Texture4, reflectVector, vec2(2048.0, 1024.0), mipIndex);
-//vec3 envColor = decodeRGBE(textureSphere(Texture4, reflectVector ));
-
+       //vec3 envColor = BlurTextureSphere(Texture4, reflectVector, vec2(2048.0, 1024.0), mipIndex);
+       vec3 envColor = FakeBlurTextureSphere(Texture4, Texture6, textureSphereCoordinates(reflectVector), mipIndex);
         vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
         envContrib = envFresnel * envColor;
 
@@ -1061,9 +1108,6 @@ vec3 envColor = BlurTextureSphere(Texture4, reflectVector, vec2(2048.0, 1024.0),
 vec3 linearColor;
 
 linearColor =  (light1 + realAlbedo*irradiance*lightAmbientIntensity + envContrib*lightAmbientIntensity);
-
-//linearColor = irradiance.xyz;
-//linearColor = envColor.xyz;
 
     gl_FragColor = vec4(ToSRGB(Exposure + linearColor, Gamma), 1.0);
 

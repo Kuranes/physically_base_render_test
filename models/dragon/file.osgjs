@@ -1,0 +1,467 @@
+{
+  "Generator": "OpenSceneGraph 3.1.3", 
+  "Version": 6, 
+  "osg.Node": {
+    "Children": [ {
+      "osg.Node": {
+        "UniqueID": 0, 
+        "Name": "dragon_vrip.ply.resolve", 
+        "Children": [ {
+          "osg.Geometry": {
+            "UniqueID": 1, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 4, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 12417,
+                      "Offset": 0
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 5, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 211299,
+                      "Offset": 24836
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 3, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 447436
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 2, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 1233868
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        },
+        {
+          "osg.Geometry": {
+            "UniqueID": 6, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 9, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 13203,
+                      "Offset": 2020300
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 10, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 207518,
+                      "Offset": 2046708
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 8, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 2461744
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 7, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 3248176
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        },
+        {
+          "osg.Geometry": {
+            "UniqueID": 11, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 14, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 12243,
+                      "Offset": 4034608
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 15, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 206851,
+                      "Offset": 4059096
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 13, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 4472800
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 12, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 5259232
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        },
+        {
+          "osg.Geometry": {
+            "UniqueID": 16, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 19, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 12471,
+                      "Offset": 6045664
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 20, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 206079,
+                      "Offset": 6070608
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 18, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 6482768
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 17, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 7269200
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        },
+        {
+          "osg.Geometry": {
+            "UniqueID": 21, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 24, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 12204,
+                      "Offset": 8055632
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 25, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 206637,
+                      "Offset": 8080040
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 23, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 8493316
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 22, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 9279748
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        },
+        {
+          "osg.Geometry": {
+            "UniqueID": 26, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 29, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 12048,
+                      "Offset": 10066180
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 30, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 208523,
+                      "Offset": 10090276
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 28, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 10507324
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 27, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 65536,
+                    "Offset": 11293756
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        },
+        {
+          "osg.Geometry": {
+            "UniqueID": 31, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 34, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 11097,
+                      "Offset": 12080188
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 35, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 189656,
+                      "Offset": 12102384
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Normal": {
+                "UniqueID": 33, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 59254,
+                    "Offset": 12481696
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 32, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 59254,
+                    "Offset": 13192744
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        } ]
+      }
+    } ]
+  }
+}

@@ -21,58 +21,58 @@ function loadShader( shaderFile ) {
 function readImageURL( url ) {
     var ext = url.split( '.' )
         .pop();
-    if ( ext == "hdr" )
+    if ( ext === 'hdr' )
         return osg.readHDRImage( url );
 
     return osgDB.readImageURL( url );
 }
 function base64ArrayBuffer(arrayBuffer) {
-  var base64    = ''
-  var encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    var base64    = '';
+    var encodings = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-  var bytes         = new Uint8Array(arrayBuffer)
-  var byteLength    = bytes.byteLength
-  var byteRemainder = byteLength % 3
-  var mainLength    = byteLength - byteRemainder
+    var bytes         = new Uint8Array(arrayBuffer);
+    var byteLength    = bytes.byteLength;
+    var byteRemainder = byteLength % 3;
+    var mainLength    = byteLength - byteRemainder;
 
-  var a, b, c, d
-  var chunk
+    var a, b, c, d;
+    var chunk;
 
   // Main loop deals with bytes in chunks of 3
   for (var i = 0; i < mainLength; i = i + 3) {
     // Combine the three bytes into a single integer
-    chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2]
+      chunk = (bytes[i] << 16) | (bytes[i + 1] << 8) | bytes[i + 2];
 
     // Use bitmasks to extract 6-bit segments from the triplet
-    a = (chunk & 16515072) >> 18 // 16515072 = (2^6 - 1) << 18
-    b = (chunk & 258048)   >> 12 // 258048   = (2^6 - 1) << 12
-    c = (chunk & 4032)     >>  6 // 4032     = (2^6 - 1) << 6
-    d = chunk & 63               // 63       = 2^6 - 1
+      a = (chunk & 16515072) >> 18; // 16515072 = (2^6 - 1) << 18
+      b = (chunk & 258048)   >> 12; // 258048   = (2^6 - 1) << 12
+      c = (chunk & 4032)     >>  6; // 4032     = (2^6 - 1) << 6
+      d = chunk & 63;               // 63       = 2^6 - 1
 
     // Convert the raw binary segments to the appropriate ASCII encoding
-    base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d]
+      base64 += encodings[a] + encodings[b] + encodings[c] + encodings[d];
   }
 
   // Deal with the remaining bytes and padding
-  if (byteRemainder == 1) {
-    chunk = bytes[mainLength]
+  if (byteRemainder === 1) {
+      chunk = bytes[mainLength];
 
-    a = (chunk & 252) >> 2 // 252 = (2^6 - 1) << 2
+      a = (chunk & 252) >> 2; // 252 = (2^6 - 1) << 2
 
     // Set the 4 least significant bits to zero
-    b = (chunk & 3)   << 4 // 3   = 2^2 - 1
+      b = (chunk & 3)   << 4; // 3   = 2^2 - 1
 
-    base64 += encodings[a] + encodings[b] + '=='
-  } else if (byteRemainder == 2) {
-    chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1]
+      base64 += encodings[a] + encodings[b] + '==';
+  } else if (byteRemainder === 2) {
+      chunk = (bytes[mainLength] << 8) | bytes[mainLength + 1];
 
-    a = (chunk & 64512) >> 10 // 64512 = (2^6 - 1) << 10
-    b = (chunk & 1008)  >>  4 // 1008  = (2^6 - 1) << 4
+      a = (chunk & 64512) >> 10; // 64512 = (2^6 - 1) << 10
+      b = (chunk & 1008)  >>  4; // 1008  = (2^6 - 1) << 4
 
     // Set the 2 least significant bits to zero
-    c = (chunk & 15)    <<  2 // 15    = 2^4 - 1
+      c = (chunk & 15)    <<  2; // 15    = 2^4 - 1
 
-    base64 += encodings[a] + encodings[b] + encodings[c] + '='
+      base64 += encodings[a] + encodings[b] + encodings[c] + '=';
   }
 
   return base64;
@@ -103,7 +103,7 @@ var loadCacheImage = function( urlImg ){
     else{
         var xhrImg = new XMLHttpRequest();
         xhrImg.addEventListener( 'load', function(e) {
-            img.src= "data:image/png;base64," + base64ArrayBuffer(e.currentTarget.response);
+            img.src= 'data:image/png;base64,' + base64ArrayBuffer(e.currentTarget.response);
         });
         xhrImg.open('GET', urlImg, true);
         xhrImg.responseType = 'arraybuffer';
@@ -111,7 +111,7 @@ var loadCacheImage = function( urlImg ){
     }
 
     preLoadImg[ urlImg ] = img;
-}
+};
 
 // load and enable texture filters
 var getTexture = function ( url ) {
@@ -125,22 +125,27 @@ var getTexture = function ( url ) {
     texture.setMinFilter( osg.Texture.LINEAR_MIPMAP_LINEAR );
     texture.setMagFilter( osg.Texture.LINEAR );
     return texture;
-}
+};
 
 // load models either json or jsonp
 function getModelJson( modelName, rootModelNode, callBackLoaded ) {
         var urlModel;
         var jsonp = true;
 
+        var baseURL = '';
+
         switch ( modelName ) {
         case 'pokerscene':
-            urlModel = 'http://osgjs.org/examples/pokerscene/' + modelName + '.js';
+            baseURL = 'http://osgjs.org/examples/pokerscene/';
+            urlModel = baseURL + modelName + '.js';
             break;
         case 'ogre':
-            urlModel = 'http://osgjs.org/examples/shadow/' + modelName + '.osgjs';
+            baseURL = 'http://osgjs.org/examples/shadow/';
+            urlModel = baseURL + modelName + '.osgjs';
             break;
         default:
-            urlModel = window.location.origin + window.location.pathname + 'models/' + modelName + '.osgjs';
+            baseURL = window.location.origin + window.location.pathname + 'models/' + modelName + '/';
+            urlModel = baseURL + '/file.osgjs';
             jsonp = false;
             break;
         }
@@ -157,7 +162,7 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
             // we want to reference image in or resource manager and manage the loading as well
             var createReadImageURLFunction = function ( url, options ) {
                 // here we are in the context of Input.js from osgjs
-                url = url;
+                url = baseURL + url;
                 console.log( url );
                 var image = new osg.Image();
                 image.setURL( url );
@@ -169,7 +174,10 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
 
             var createReadBinaryArrayURLFunction = function ( url, options ) {
                 // here we are in the context of Input.js from osgjs
-                url = 'models/' + url + '.gz';
+                url = baseURL + url;
+                if (url.indexOf('gz') === -1){
+                    url += '.gz';
+                }
 
                 var defer2 = Q.defer();
                 var dataProxyLoader2 = new XMLHttpRequest();
@@ -512,19 +520,20 @@ function getEnvSphere( size, scene, viewer ) {
 // change the environment maps (reflective included)
 // Images are 8-bit RGBE encoded based on the radiance file format
 // The example supports radiance .hdr files, but uses .png which contains the exact same information for better size and speed.
-function setEnvironment( name, myStateSet, textureEnv, textureHigh, background ) {
+function setEnvironment( name, myStateSet, textureEnv, textureHigh, textureHighBlur, background ) {
     var texturesEnvList = {
-        'Alexs_Apartment': [ 'Alexs_Apt_2k.png', 'Alexs_Apt_Env.png' ],
-        'Arches_E_PineTree': [ 'Arches_E_PineTree_3k.png', 'Arches_E_PineTree_Env.png' ],
-        'GrandCanyon_C_YumaPoint': [ 'GCanyon_C_YumaPoint_3k.png', 'GCanyon_C_YumaPoint_Env.png' ],
-        'Milkyway': [ 'Milkyway_small.png', 'Milkyway_Light.png' ],
-        'Walk_Of_Fame': [ 'Mans_Outside_2k.png', 'Mans_Outside_Env.png' ]
+        'Alexs_Apartment': [ 'Alexs_Apt_2k.hdr', 'Alexs_Apt_Env.hdr', 'Alexs_Apt_Blurred.hdr' ],
+        'Arches_E_PineTree': [ 'Arches_E_PineTree_2k.hdr', 'Arches_E_PineTree_Env.hdr', 'Arches_E_PineTree_Blurred.hdr' ],
+        'GrandCanyon_C_YumaPoint': [ 'GCanyon_C_YumaPoint_2k.hdr', 'GCanyon_C_YumaPoint_Env.hdr', 'GCanyon_C_YumaPoint_Blurred.hdr' ],
+        'Milkyway': [ 'Milkyway_2k.hdr', 'Milkyway_Light.hdr', 'Milkyway_Blurred.hdr' ],
+        'Walk_Of_Fame': [ 'Mans_Outside_2k.hdr', 'Mans_Outside_Env.hdr', 'Mans_Outside_Blurred.hdr' ]
     };
     var urls = texturesEnvList[ name ];
 
     Q.all( [
         readImageURL( 'textures/' + name + '/' + urls[ 0 ] ),
-        readImageURL( 'textures/' + name + '/' + urls[ 1 ] ) ] )
+        readImageURL( 'textures/' + name + '/' + urls[ 1 ] ),
+        readImageURL( 'textures/' + name + '/' + urls[ 2 ] ) ] )
         .then( function ( images ) {
             textureHigh = new osg.Texture();
             textureHigh.setImage( images[ 0 ] );
@@ -539,13 +548,22 @@ function setEnvironment( name, myStateSet, textureEnv, textureHigh, background )
 
             textureEnv = new osg.Texture();
             textureEnv.setImage( images[ 1 ] );
-            if ( images[ 0 ].data ) {
-                textureEnv.setTextureSize( images[ 0 ].width, images[ 0 ].height );
-                textureEnv.setImage( images[ 0 ].data, osg.Texture.RGBA );
+            if ( images[ 1 ].data ) {
+                textureEnv.setTextureSize( images[ 1 ].width, images[ 1 ].height );
+                textureEnv.setImage( images[ 1 ].data, osg.Texture.RGBA );
             }
+
+            textureHighBlur = new osg.Texture();
+            textureHighBlur.setImage( images[ 2 ] );
+            if ( images[ 2 ].data ) {
+                textureHighBlur.setTextureSize( images[ 2 ].width, images[ 2 ].height );
+                textureHighBlur.setImage( images[ 2 ].data, osg.Texture.RGBA );
+            }
+
             if ( myStateSet ) {
                 myStateSet.setTextureAttributeAndMode( 4, textureHigh, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 myStateSet.setTextureAttributeAndMode( 5, textureEnv, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                myStateSet.setTextureAttributeAndMode( 6, textureHighBlur, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             }
         } );
 }

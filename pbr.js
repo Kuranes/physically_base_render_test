@@ -1,4 +1,4 @@
-/*global osg:false,  OSG :false, osgViewer: false, osgDB: false, Q: false, dat: false*/
+/*global osg:false,  OSG :false, osgViewer: false, getTexture: false, dat: false, getModelJson: false, presets: false, loadShader: false, setEnvironment: false, getEnvSphere: false*/
 
 var main = function () {
 
@@ -9,6 +9,7 @@ var main = function () {
     var viewer;
     var textureHigh;
     var textureEnv;
+    var textureHighBlur;
     var background;
     var fragShader;
     var vertShader;
@@ -32,7 +33,7 @@ var main = function () {
         myStateSet = model.getOrCreateStateSet();
         reload = true;
         updateShader();
-    }
+    };
 
     var Albedo = osg.Uniform.createFloat4( [ 0.5, 0.0, 0.0, 1.0 ], 'Albedo' );
     var Specular = osg.Uniform.createFloat4( [ 0.0, 0.7, 0.0, 1.0 ], 'Specular' );
@@ -119,9 +120,10 @@ var main = function () {
             case 'NONE':
                 myStateSet.removeTextureAttribute( 4, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 myStateSet.removeTextureAttribute( 5, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                myStateSet.removeTextureAttribute( 6, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 break;
             default:
-                setEnvironment( pbrGui.EnvMap, myStateSet, textureEnv, textureHigh, background );
+                setEnvironment( pbrGui.EnvMap, myStateSet, textureEnv, textureHigh, textureHighBlur, background );
                 break;
             }
             currentChannelTexture[4] = pbrGui.EnvMap;
@@ -155,8 +157,9 @@ var main = function () {
         this.lightIntensity = 1.0;
         this.lightAmbientIntensity = 0.01;
         this.gamma = 2.2;
-        this.exposure = 0.0
+        this.exposure = 0.0;
         this.lightColor = [ 255.0, 255.0, 255.0, 1.0 ];
+        this.equationDefine = 'EDIT_MODE';
         this.metallicSpecularDefine = 'METALLIC';
         this.normalDistributionDefine = 'GGX';
         this.fresnelDefine = 'SCHLICK';
@@ -257,6 +260,7 @@ var main = function () {
         var vertexshader = currentDefine + vertShader;
 
         //currentDefine += '#define WITH_NORMALMAP_UNSIGNED 1\n';
+        currentDefine += '#define EQUATION_' + pbrGui.equationDefine + ' 1\n';
         currentDefine += '#define ' + pbrGui.metallicSpecularDefine + ' 1\n';
         currentDefine += '#define NDF_' + pbrGui.normalDistributionDefine + ' 1\n';
         currentDefine += '#define FRESNEL_' + pbrGui.fresnelDefine + ' 1\n';
@@ -285,6 +289,7 @@ var main = function () {
             currentDefine += '#define USE_ENV_MAP 1 \n';
             myStateSet.addUniform( osg.Uniform.createInt1( 4, 'Texture4' ) );
             myStateSet.addUniform( osg.Uniform.createInt1( 5, 'Texture5' ) );
+            myStateSet.addUniform( osg.Uniform.createInt1( 6, 'Texture6' ) );
         }
 
         var fragmentshader = currentDefine + fragShader;
@@ -347,14 +352,14 @@ var main = function () {
         } );
 
         return programObj;
-    };
+    }
 
     var gui = new dat.GUI( {
         load: presets
     } );
 
     // setup GUI
-    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre', 'gun' ] )
+    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre', 'gun', 'perry', 'dragon', 'bunny', 'buddha', 'sponza', 'teapot' ] )
         .onChange( function ( value ) {
             getModelJson( value, rootModelNode, callBackLoaded );
         } );
@@ -386,12 +391,14 @@ var main = function () {
     f3.add( pbrGui, 'gamma', 0.0, 5.0 )
         .step( 0.1 )
         .onChange( update );
-    f3.add( pbrGui, 'exposure', -2.0, 2.0 )
+    f3.add( pbrGui, 'exposure', 0.0, 1.0 )
         .step( 0.1 )
         .onChange( update );
 
     var f4 = gui.addFolder( 'Equations' );
 
+    f4.add( pbrGui, 'equationDefine', [ 'EDIT_MODE', 'GGX_3', 'COOK_TORRANCE', 'GGX_REF', 'GGX_1', 'GGX_2', 'DOTNL' ] )
+        .onChange( updateShader );
     f4.add( pbrGui, 'metallicSpecularDefine', [ 'METALLIC', 'SPECULAR' ] )
         .onChange( updateShader );
     f4.add( pbrGui, 'normalDistributionDefine', [ 'GGX', 'BLINNPHONG', 'BECKMANN' ] )
@@ -449,8 +456,7 @@ var main = function () {
     viewer.getCamera()
         .setClearColor( [ 0.3, 0.3, 0.3, 0.3 ] );
 
-    if ( !viewer.getWebGLCaps()
-        ._webGLExtensions.OES_standard_derivatives ) {
+    if ( !viewer.getWebGLCaps()._webGLExtensions.OES_standard_derivatives ) {
         alert( 'need derivatives, man!' );
     }
     var root = createScene( cbFocusCamera );
@@ -464,7 +470,7 @@ var main = function () {
     background.getOrCreateStateSet()
         .addUniform( gamma );
 
-    setEnvironment( 'Milkyway', myStateSet, textureEnv, textureHigh, background );
+    setEnvironment( 'Milkyway', myStateSet, textureEnv, textureHigh, textureHighBlur, background );
 
     viewer.setSceneData( root );
 
