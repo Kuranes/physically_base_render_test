@@ -1,0 +1,89 @@
+{
+  "Generator": "OpenSceneGraph 3.1.4", 
+  "Version": 7, 
+  "osg.Node": {
+    "Children": [ {
+      "osg.Node": {
+        "UniqueID": 0, 
+        "Name": "Teapot01", 
+        "Children": [ {
+          "osg.Geometry": {
+            "UniqueID": 1, 
+            "PrimitiveSetList": [ {
+              "DrawElementsUShort": {
+                "UniqueID": 5, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 6,
+                      "Offset": 0
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLES"
+              }
+            },
+            {
+              "DrawElementsUShort": {
+                "UniqueID": 6, 
+                "Indices": {
+                  "Array": { 
+                    "Uint16Array": { 
+                      "File": "model_file.bin.gz",
+                      "Size": 4106,
+                      "Offset": 12
+                    }
+                  }, 
+                  "ItemSize": 1, 
+                  "Type": "ELEMENT_ARRAY_BUFFER"
+                }, 
+                "Mode": "TRIANGLE_STRIP"
+              }
+            } ], 
+            "VertexAttributeList": {
+              "Color": {
+                "UniqueID": 4, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 1598,
+                    "Offset": 8224
+                  }
+                }, 
+                "ItemSize": 4, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Normal": {
+                "UniqueID": 3, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 1598,
+                    "Offset": 33792
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }, 
+              "Vertex": {
+                "UniqueID": 2, 
+                "Array": { 
+                  "Float32Array": { 
+                    "File": "model_file.bin.gz",
+                    "Size": 1598,
+                    "Offset": 52968
+                  }
+                }, 
+                "ItemSize": 3, 
+                "Type": "ARRAY_BUFFER"
+              }
+            }
+          }
+        } ]
+      }
+    } ]
+  }
+}
