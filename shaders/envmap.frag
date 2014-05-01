@@ -1,9 +1,8 @@
+precision highp float;
 
-
-  precision highp float;
-
-#define PI 3.14159265359
+#define PI    3.14159265359
 #define INVPI 0.31830988618
+#define EPS   1e-5
 
 uniform sampler2D Texture0;
 uniform float Exposure;
@@ -52,17 +51,20 @@ float SrgbToLinear(float val)
 }
 
 vec3 ToLinear(vec3 v, float gamma) {
-    if (gamma == 2.2)
-        return vec3(SrgbToLinear(v.x), SrgbToLinear(v.y), SrgbToLinear(v.z));
-    else if (gamma == 2.0)
+    //if (gamma == 2.2)
+    //    return vec3(SrgbToLinear(v.x), SrgbToLinear(v.y), SrgbToLinear(v.z));
+    //else
+    if (gamma == 2.0)
         return v * v;
     else
         return pow_vec3_f(v, gamma);
 }
+
 vec3 ToSRGB(vec3 v, float gamma)   {
-    if (gamma == 2.2)
-        return vec3(LinearToSrgb(v.x), LinearToSrgb(v.y), LinearToSrgb(v.z));
-    else if (gamma == 2.0)
+    // if (gamma == 2.2)
+    //    return vec3(LinearToSrgb(v.x), LinearToSrgb(v.y), LinearToSrgb(v.z));
+    // else
+    if (gamma == 2.0)
         return sqrt(v);
     else
         return pow_vec3_f(v, 1.0/gamma);
@@ -90,7 +92,7 @@ vec4 textureSphere(sampler2D tex, vec3 r) {
       return texture2D(tex, vN);*/
     vec2 vN;
     vN.y = -r.y;
-    vN.x = atan( r.z,  r.x ) * INVPI;
+    vN.x = - ((abs(r.x) < EPS && abs(r.z) < EPS) ? 0.0 :  atan( r.z,  r.x ) * INVPI);
     vN = vN * vec2(0.5) + vec2(0.5);
     return texture2D(tex, vN);
 #else

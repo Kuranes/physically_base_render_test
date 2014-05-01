@@ -16,6 +16,10 @@ var main = function () {
     var reload = true;
     var myStateSet;
 
+    var textureSet = {};
+    // the light itself
+    var lightNode;
+    var lightNew;
 
     var rootModelNode = new osg.MatrixTransform();
     rootModelNode.setMatrix( osg.Matrix.makeRotate( -Math.PI / 2, 1, 0, 0, [] ) );
@@ -31,8 +35,10 @@ var main = function () {
         rootModelNode.addChild( model );
         cbFocusCamera();
         myStateSet = model.getOrCreateStateSet();
+
         reload = true;
         updateShader();
+
     };
 
     var Albedo = osg.Uniform.createFloat4( [ 0.5, 0.0, 0.0, 1.0 ], 'Albedo' );
@@ -64,11 +70,15 @@ var main = function () {
             case 'CERBERUS':
                 myStateSet.setTextureAttributeAndMode( 0, getTexture( 'textures/Cerberus_A.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 break;
+
+            default:
+                myStateSet.setTextureAttributeAndMode( 0, getTexture( pbrGui.DiffuseMap ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
             }
             currentChannelTexture[0] = pbrGui.DiffuseMap;
         }
 
-        if ( reload ||  currentChannelTexture[1] !== pbrGui.RoughnessMap ){
+        if (  reload ||  currentChannelTexture[1] !== pbrGui.RoughnessMap ){
             switch ( pbrGui.RoughnessMap ) {
             case 'NONE':
                 myStateSet.removeTextureAttribute( 1, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
@@ -79,12 +89,16 @@ var main = function () {
             case 'CERBERUS':
                 myStateSet.setTextureAttributeAndMode( 1, getTexture( 'textures/Cerberus_R.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 break;
+
+            default:
+                myStateSet.setTextureAttributeAndMode( 1, getTexture( pbrGui.RoughnessMap ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                break;
             }
             currentChannelTexture[1] = pbrGui.RoughnessMap;
         }
 
 
-        if (  reload || currentChannelTexture[2] !== pbrGui.MetallicMap ){
+        if ( reload || currentChannelTexture[2] !== pbrGui.MetallicMap ){
             switch ( pbrGui.MetallicMap ) {
             case 'NONE':
                 myStateSet.removeTextureAttribute( 2, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
@@ -95,11 +109,13 @@ var main = function () {
             case 'CERBERUS':
                 myStateSet.setTextureAttributeAndMode( 2, getTexture( 'textures/Cerberus_M.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 break;
+            default:
+                myStateSet.setTextureAttributeAndMode( 2, getTexture( pbrGui.MetallicMap ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             }
             currentChannelTexture[2] = pbrGui.MetallicMap;
         }
 
-        if (  reload || currentChannelTexture[3] !== pbrGui.NormalMap ){
+        if ( reload || currentChannelTexture[3] !== pbrGui.NormalMap ){
 
             switch ( pbrGui.NormalMap ) {
             case 'NONE':
@@ -111,16 +127,17 @@ var main = function () {
             case 'CERBERUS':
                 myStateSet.setTextureAttributeAndMode( 3, getTexture( 'textures/Cerberus_N.png' ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 break;
+            default:
+                myStateSet.setTextureAttributeAndMode( 3, getTexture( pbrGui.NormalMap ), osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );        break;
             }
             currentChannelTexture[3] = pbrGui.NormalMap;
         }
 
-        if (  reload || currentChannelTexture[4] !== pbrGui.EnvMap ){
+        if ( reload || currentChannelTexture[4] !== pbrGui.EnvMap ){
             switch ( pbrGui.EnvMap ) {
             case 'NONE':
                 myStateSet.removeTextureAttribute( 4, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 myStateSet.removeTextureAttribute( 5, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-                myStateSet.removeTextureAttribute( 6, undefined, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 break;
             default:
                 setEnvironment( pbrGui.EnvMap, myStateSet, textureEnv, textureHigh, textureHighBlur, background );
@@ -157,7 +174,7 @@ var main = function () {
         this.lightIntensity = 1.0;
         this.lightAmbientIntensity = 0.01;
         this.gamma = 2.2;
-        this.exposure = 0.0;
+        this.exposure = 0.0001;
         this.lightColor = [ 255.0, 255.0, 255.0, 1.0 ];
         this.equationDefine = 'EDIT_MODE';
         this.metallicSpecularDefine = 'METALLIC';
@@ -222,7 +239,7 @@ var main = function () {
     function createScene() {
         var scene = new osg.Node();
 
-        getModelJson( 'materialTest', rootModelNode, callBackLoaded );
+        getModelJson( 'materialTest', rootModelNode, callBackLoaded, textureSet, pbrGui );
 
         scene.addChild( rootModelNode );
 
@@ -351,6 +368,13 @@ var main = function () {
             program: programObj
         } );
 
+
+
+        programObj.trackAttributes = {};
+        programObj.trackAttributes.attributeKeys = [];
+        programObj.trackAttributes.attributeKeys.push('Material');
+        programObj.trackAttributes.attributeKeys.push('Light0');
+
         return programObj;
     }
 
@@ -359,9 +383,31 @@ var main = function () {
     } );
 
     // setup GUI
-    gui.add( pbrGui, 'model', [ 'materialTest', 'pokerscene', 'ogre', 'gun', 'perry', 'dragon', 'bunny', 'buddha', 'sponza', 'teapot' ] )
+    gui.add( pbrGui, 'model', [ 'materialTest', 'plane', 'sphere', 'cube',  'pokerscene', 'ogre', 'gun', 'perry', 'dragon', 'bunny', 'buddha', 'sponza', 'teapot' ] )
         .onChange( function ( value ) {
-            getModelJson( value, rootModelNode, callBackLoaded );
+            textureSet = {};
+            var newSimpleGeom;
+            switch(value){
+            case 'plane':
+                var QuadSizeX = 100;
+                var QuadSizeY = QuadSizeX*9/16.0;
+                newSimpleGeom = osg.createTexturedQuadGeometry(-QuadSizeX/2.0, -QuadSizeY/2.0,0,
+                                                                  QuadSizeX, 0 ,0,
+                                                                  0, QuadSizeY,0);
+                break;
+            case 'sphere':
+                newSimpleGeom = osg.createTexturedSphere( 10, 30, 30 );
+                break;
+            case 'cube':
+                var sizeBox = 5;
+                newSimpleGeom = osg.createTexturedBoxGeometry(0, 0, 0, sizeBox, sizeBox, sizeBox);
+                break;
+            }
+            if (newSimpleGeom){
+                callBackLoaded(newSimpleGeom);
+                return;
+            }
+            getModelJson( value, rootModelNode, callBackLoaded, textureSet, pbrGui );
         } );
     var f1 = gui.addFolder( 'Colors' );
     f1.addColor( pbrGui, 'Albedo' )
@@ -470,11 +516,24 @@ var main = function () {
     background.getOrCreateStateSet()
         .addUniform( gamma );
 
-    setEnvironment( 'Milkyway', myStateSet, textureEnv, textureHigh, textureHighBlur, background );
+    setEnvironment( 'Milkyway', myStateSet, textureHigh, textureEnv, textureHighBlur, background );
+
+// the light itself
+    lightNode = new osg.LightSource();
+    lightNew = new osg.Light();
+   // mainNode.setUpdateCallback(new LightUpdateCallback());
+    root.light = lightNew;
+    lightNode.setLight(lightNew);
+
+    root.getOrCreateStateSet().setAttributeAndMode(lightNew, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE);
+
+    root.addChild(lightNode);
+    viewer.setLight(lightNew);
 
     viewer.setSceneData( root );
 
     viewer.setupManipulator();
+
     viewer.run();
 
 };

@@ -1,9 +1,10 @@
 #define PI     3.14159265359
 #define INVPI  0.31830988618
-#define Pi2    6.283185307;
-#define Pi_2   1.570796327;
-#define Pi_4   0.7853981635;
-#define InvPi2 0.159154943;
+#define Pi2    6.283185307
+#define Pi_2   1.570796327
+#define Pi_4   0.7853981635
+#define InvPi2 0.159154943
+#define EPS    1e-5
 
 ////////////  http://www.alexandre-pestana.com/tweaking-the-cook-torrance-brdf/
 ////////////  http://graphicrants.blogspot.ca/2013/08/specular-brdf-reference.html
@@ -29,7 +30,7 @@ vec3 max_vec3_f(vec3 v, float p)
 
 float rcp(float x)
 {
-    return 1.0 / x;
+    return inversesqrt(x);
 }
 
 
@@ -66,17 +67,20 @@ float SrgbToLinear(float val)
 }
 
 vec3 ToLinear(vec3 v, float gamma) {
-    if (gamma == 2.2)
-        return vec3(SrgbToLinear(v.x), SrgbToLinear(v.y), SrgbToLinear(v.z));
-    else if (gamma == 2.0)
+    //if (gamma == 2.2)
+    //    return vec3(SrgbToLinear(v.x), SrgbToLinear(v.y), SrgbToLinear(v.z));
+    //else
+    if (gamma == 2.0)
         return v*v;
     else
         return pow_vec3_f(v, gamma);
 }
 vec3 ToSRGB(vec3 v, float gamma)   {
-    if (gamma == 2.2)
+    /* if (gamma == 2.2)
         return vec3(LinearToSrgb(v.x), LinearToSrgb(v.y), LinearToSrgb(v.z));
-    else if (gamma == 2.0)
+    else
+    */
+    if (gamma == 2.0)
         return sqrt(v);
     else
         return pow_vec3_f(v, 1.0/gamma);
@@ -624,7 +628,7 @@ vec3 decodeRGBE(vec4 rgbe) {
  #define OPT_SPHERE_SAMPLE_GET 1
 #ifdef OPT_SPHERE_SAMPLE_GET
     vN.y = -r.y;
-    vN.x = atan( r.z,  r.x ) * INVPI;
+    vN.x = (abs(r.x) < EPS && abs(r.z) < EPS) ? 0.0 :  atan( r.z,  r.x ) * INVPI;
     vN = vN * vec2(0.5) + vec2(0.5);
     return vN;
 #else
@@ -915,6 +919,64 @@ float ComputeRoughness(vec2 texelPos, int mipLevel, float roughness, sampler2D N
     }
 }
 #endif
+
+/////////////////////////////////////////////////////////////////////////
+//-------------------------- Fake texture2dLod ---------------------------
+/////////////////////////////////////////////////////////////////////////
+
+float mipMapLevel(vec2 uv, vec2 texSize)
+{
+#ifdef USE_DERIVATIVES
+   // A New Look At Mipmap Level Estimation Techniques
+  // http://wscg.zcu.cz/wscg1998/papers98/Shirman_98.pdf
+  // 2.2  invariant derivatives method
+
+   // A New Look At Mipmap Level Estimation Techniques
+  // http://wscg.zcu.cz/wscg1998/papers98/Shirman_98.pdf
+  // 2.2  invariant derivatives method
+
+   vec2  dx        = dFdx(uv) * texSize.x;
+   vec2  dy        = dFdy(uv) * texSize.y;
+   float  dotx        = dot(dx, dx);
+   float  doty        = dot(dy, dy);
+   float delta_max_sqr = dotx + doty;
+   float current_lod = 0.5 * log2(0.5*delta_max_sqr);
+   return current_lod;
+
+#else
+    return 0.0;
+#endif
+}
+
+
+vec4 myTexture2DLod(sampler2D tex, vec2 uv, vec2 texSize, float lod)
+{
+    float current_lod = mipMapLevel(uv, texSize);
+    float new_bias = current_lod - lod;
+    return texture2D(tex, uv, new_bias);
+}
+
+vec3 texture2DSphereBilinearRgbe(const in sampler2D texture,  const in vec3 reflectVector, const in vec2 size, const float mipIndex) {
+
+    vec2 t = 1.0 / size;
+    vec2 uv = textureSphereCoordinates(reflectVector) - vec2(0.5*t);
+
+    float current_lod = mipMapLevel(uv, size);
+    float bias = current_lod - mipIndex;
+
+    vec3 a,b,c,d;
+
+    a = decodeRGBE( texture2D(texture, uv, bias ) );
+    b = decodeRGBE( texture2D(texture, uv + vec2(t.x, 0.0), bias) );
+    c = decodeRGBE( texture2D(texture, uv + vec2(0.0, t.y), bias) );
+    d = decodeRGBE( texture2D(texture, uv + vec2(t.x, t.y), bias ) );
+
+    vec2 f = fract(uv * size);
+    vec3 A = mix(a, b, f.x),
+        B = mix(c, d, f.x);
+    return mix(A, B, f.y);
+}
+
 /////////////////////////////////////////////////////////////////////////
 //-------------------------- MAIN SHADER PART ---------------------------
 /////////////////////////////////////////////////////////////////////////
@@ -922,6 +984,26 @@ float ComputeRoughness(vec2 texelPos, int mipLevel, float roughness, sampler2D N
 uniform mat4 ModelViewMatrix;
 uniform mat4 ProjectionMatrix;
 uniform mat4 NormalMatrix;
+
+uniform vec4 MaterialAmbient;
+uniform vec4 MaterialDiffuse;
+uniform vec4 MaterialSpecular;
+uniform vec4 MaterialEmission;
+uniform float MaterialShininess;
+
+
+uniform vec4 Light0_uniform_position;
+uniform vec3 Light0_uniform_direction;
+uniform mat4 Light0_uniform_matrix;
+uniform mat4 Light0_uniform_invMatrix;
+uniform float Light0_uniform_constantAttenuation;
+uniform float Light0_uniform_linearAttenuation;
+uniform float Light0_uniform_quadraticAttenuation;
+uniform vec4 Light0_uniform_ambient;
+uniform vec4 Light0_uniform_diffuse;
+uniform vec4 Light0_uniform_specular;
+uniform float Light0_uniform_spotCutoff;
+uniform float Light0_uniform_spotBlend;
 
 #ifdef USE_DIFFUSE_MAP
 uniform sampler2D Texture0;
@@ -942,17 +1024,15 @@ uniform sampler2D Texture3;
 #ifdef USE_ENV_MAP
 uniform sampler2D Texture4;
 uniform sampler2D Texture5;
-uniform sampler2D Texture6;
 #endif
 
 
-varying vec4 position;
+varying vec4 eyePos;
 varying vec4 normal;
 varying vec4 tangent;
 varying vec2 texcoord0;
 
 uniform vec4 lightPos;
-uniform vec4 eyePos;
 
 uniform vec4 Albedo;
 uniform vec4 Specular;
@@ -998,16 +1078,28 @@ void main(void)
 #endif
 #endif
 
-  vec4 lightPosition = lightPos;
-  vec3 lightColor = LightColor.xyz;
-  float lightIntensity = LightIntensity;
-  float lightAmbientIntensity = LightAmbientIntensity;
+    vec4 lightPosition = Light0_uniform_position;
+    vec3 lightColor = LightColor.xyz;
+    float lightIntensity = LightIntensity;
+    float lightAmbientIntensity = LightAmbientIntensity;
+
+    vec3 Light0_lightEye = vec3(Light0_uniform_matrix * Light0_uniform_position);
+    vec3 Light0_lightDir;
+    if (Light0_uniform_position[3] == 1.0) {
+        Light0_lightDir = Light0_lightEye - eyePos.xyz;
+    } else {
+        Light0_lightDir = Light0_lightEye;
+    }
+    vec3 Light0_Direction = normalize(mat3(vec3(Light0_uniform_invMatrix[0]), vec3(Light0_uniform_invMatrix[1]), vec3(Light0_uniform_invMatrix[2]))*Light0_uniform_direction);
+
 
     // Compute view direction.
-  vec4 pos = position;// / position.w;
-    vec3 viewDir = normalize(eyePos.xyz - pos.xyz);
-    vec3 lightDist = lightPos.xyz - pos.xyz;
-    vec3 lightDir = normalize(lightDist);
+    vec4 pos = eyePos;// / position.w;
+    vec3 viewDir = -normalize(eyePos.xyz);
+    vec3 lightEyePos = Light0_lightEye;
+    vec3 lightDist = Light0_lightDir;//pos.xyz - lightPosition.xyz;
+    float lightDistLength = length(lightDist);
+    vec3 lightDir = Light0_Direction;//(lightDistLength > 0.0 + 1e5) ? -lightDist / lightDistLength : vec3(0.0,1.0,0.0);
 
 #ifdef USE_NORMAL_MAP
     vec3 normalN = readNormal(Texture3, texcoord0.xy);
@@ -1036,7 +1128,7 @@ void main(void)
 
 #ifdef METALLIC
     // Lerp with metallic value to find the good diffuse and specular.
-    vec3 realAlbedo = albedoColor - albedoColor * metallic;
+          vec3 realAlbedo = albedoColor - albedoColor * metallic;
     // 0.03 default specular value for dielectric.
     vec3 realSpecularColor = mix(vec3(0.03), albedoColor, metallic);
 #else // defined(SPECULAR)
@@ -1080,34 +1172,32 @@ void main(void)
 #endif
 
 
-    float lightDistLength = length(lightDist);
-lightDistLength *= lightDistLength;
+    lightDistLength *= lightDistLength;
     float attenuation =  PI / lightDistLength;
-    light1 = lightIntensity *attenuation * light1 ;
+    light1 = attenuation * light1 ;
+    light1 = lightIntensity * light1 ;
 
     vec3 envContrib = vec3(0.0);
     vec3 irradiance = vec3(0.0);
 
 #ifdef USE_ENV_MAP
 
-      //float mipIndex =  roughness * roughness * 8; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
-      float mipIndex =  roughness * roughness ; //instead we blur 9 tap and use roughness as a "blur" lerp index
-      //float mipIndex =  roughness ; //instead we blur 9 tap and use roughness as a "blur" lerp index
-      // should really either use SAT or blur once the env/irr map client side and mix/lerp/smoothstep with non blurred-texfecch
 
-      irradiance = decodeRGBE(texture2D(Texture5, textureSphereCoordinates(normalN)));
-      //irradiance =   BlurTextureSphere(Texture5, normalN, vec2(512.0, 256.0), mipIndex);
+    float roughnessSq = roughness * roughness;
+    float mipIndex =  6.0 - roughness * 6.0; // missing http://www.khronos.org/registry/webgl/extensions/EXT_shader_texture_lod/
+    //irradiance = decodeRGBE(myTexture2DLod(Texture5, textureSphereCoordinates(normalN), vec2(512.0, 256.0), mipIndex));
+    irradiance = decodeRGBE(texture2D(Texture5, textureSphereCoordinates(normalN)));
 
-       vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
-       //vec3 envColor = BlurTextureSphere(Texture4, reflectVector, vec2(2048.0, 1024.0), mipIndex);
-       vec3 envColor = FakeBlurTextureSphere(Texture4, Texture6, textureSphereCoordinates(reflectVector), mipIndex);
-        vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughness * roughness, normalN, viewDir);
-        envContrib = envFresnel * envColor;
+    vec3 reflectVector = cubemapReflectionVector(CubemapTransform, -viewDir, normalN);
+    vec3 envColor = texture2DSphereBilinearRgbe(Texture4, reflectVector, vec2(2048.0, 1024.0), mipIndex);
+        //vec3 envColor = decodeRGBE(myTexture2DLod(Texture4, textureSphereCoordinates(reflectVector),  vec2(2048.0, 1024.0), mipIndex));
+    vec3 envFresnel = Specular_F_Roughness(realSpecularColor, roughnessSq, normalN, viewDir);
+    envContrib = envFresnel * envColor;
 
 #endif
-vec3 linearColor;
+    vec3 linearColor;
 
-linearColor =  (light1 + realAlbedo*irradiance*lightAmbientIntensity + envContrib*lightAmbientIntensity);
+    linearColor =  (light1 + lightAmbientIntensity * (realAlbedo*irradiance + envContrib));
 
     gl_FragColor = vec4(ToSRGB(Exposure + linearColor, Gamma), 1.0);
 

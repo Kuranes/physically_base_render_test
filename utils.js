@@ -128,7 +128,7 @@ var getTexture = function ( url ) {
 };
 
 // load models either json or jsonp
-function getModelJson( modelName, rootModelNode, callBackLoaded ) {
+function getModelJson( modelName, rootModelNode, callBackLoaded, textureSet, pbrGui ) {
         var urlModel;
         var jsonp = true;
 
@@ -166,6 +166,22 @@ function getModelJson( modelName, rootModelNode, callBackLoaded ) {
                 console.log( url );
                 var image = new osg.Image();
                 image.setURL( url );
+                if (url.indexOf('ormal') !== -1 || /_[N|n]$/.test(url)){
+                    textureSet['Normal'] = url;
+                    pbrGui.NormalMap = url;
+                }
+                else if (url.indexOf('etallic') !== -1 || /_[m|M]$/.test(url)){
+                    textureSet['Metallic'] = url;
+                    pbrGui.MetallicMap = url;
+                }
+                else if (url.indexOf('oughness') !== -1 || /_[R|r]$/.test(url)){
+                    textureSet['Roughness'] = url;
+                    pbrGui.RoughnessMap = url;
+                }
+                else if (url.indexOf('iffuse') !== -1 || url.indexOf('lbedo') !== -1  || /_[a|A]$/.test(url) || /_[d|D]$/.test(url)){
+                    textureSet['Diffuse'] = url;
+                    pbrGui.DiffuseMap = url;
+                }
                 return image;
             };
 
@@ -532,15 +548,19 @@ function setEnvironment( name, myStateSet, textureEnv, textureHigh, textureHighB
 
     Q.all( [
         readImageURL( 'textures/' + name + '/' + urls[ 0 ] ),
-        readImageURL( 'textures/' + name + '/' + urls[ 1 ] ),
-        readImageURL( 'textures/' + name + '/' + urls[ 2 ] ) ] )
+        readImageURL( 'textures/' + name + '/' + urls[ 1 ] )] )
         .then( function ( images ) {
+
             textureHigh = new osg.Texture();
             textureHigh.setImage( images[ 0 ] );
             if ( images[ 0 ].data ) {
                 textureHigh.setTextureSize( images[ 0 ].width, images[ 0 ].height );
                 textureHigh.setImage( images[ 0 ].data, osg.Texture.RGBA );
             }
+
+            textureHigh.setMinFilter( osg.Texture.LINEAR );
+            textureHigh.setMagFilter( osg.Texture.LINEAR );
+
             background.getOrCreateStateSet()
                 .setTextureAttributeAndMode( 0, textureHigh );
             background.getOrCreateStateSet()
@@ -552,18 +572,25 @@ function setEnvironment( name, myStateSet, textureEnv, textureHigh, textureHighB
                 textureEnv.setTextureSize( images[ 1 ].width, images[ 1 ].height );
                 textureEnv.setImage( images[ 1 ].data, osg.Texture.RGBA );
             }
+            textureEnv.setMinFilter( osg.Texture.LINEAR_MIPMAP_LINEAR );
+            textureEnv.setMagFilter( osg.Texture.LINEAR );
 
             textureHighBlur = new osg.Texture();
-            textureHighBlur.setImage( images[ 2 ] );
-            if ( images[ 2 ].data ) {
-                textureHighBlur.setTextureSize( images[ 2 ].width, images[ 2 ].height );
-                textureHighBlur.setImage( images[ 2 ].data, osg.Texture.RGBA );
+            textureHighBlur.setImage( images[ 0 ] );
+            if ( images[ 0 ].data ) {
+                textureHighBlur.setTextureSize( images[ 0 ].width, images[ 0 ].height );
+                textureHighBlur.setImage( images[ 0 ].data, osg.Texture.RGBA );
             }
 
+            textureHighBlur.setMinFilter( osg.Texture.NEAREST_MIPMAP_NEAREST );// perfect lod
+            textureHighBlur.setMagFilter( osg.Texture.NEAREST );
+
+            textureHighBlur.setWrapT( osg.Texture.MIRRORED_REPEAT );
+            textureHighBlur.setWrapS( osg.Texture.MIRRORED_REPEAT );
+
             if ( myStateSet ) {
-                myStateSet.setTextureAttributeAndMode( 4, textureHigh, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
+                myStateSet.setTextureAttributeAndMode( 4, textureHighBlur, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
                 myStateSet.setTextureAttributeAndMode( 5, textureEnv, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
-                myStateSet.setTextureAttributeAndMode( 6, textureHighBlur, osg.StateAttribute.ON | osg.StateAttribute.OVERRIDE );
             }
         } );
 }
